@@ -1,0 +1,18 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+PointerAlignment: Right
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Linux
+IndentCaseLabels: true
+SpaceAfterCStyleCast: true
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
