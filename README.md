@@ -1,6 +1,7 @@
 # OpenFIDO - Open-Source FIDO2 Security Key
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/yourusername/OpenFIDO/workflows/CI/badge.svg)](https://github.com/yourusername/OpenFIDO/actions)
 [![Platform](https://img.shields.io/badge/Platform-ESP32%20%7C%20STM32%20%7C%20nRF52-blue.svg)]()
 [![FIDO2](https://img.shields.io/badge/FIDO2-CTAP2.0-green.svg)]()
 
@@ -99,6 +100,7 @@ make
 - [Hardware Requirements](docs/HARDWARE.md)
 - [Security Considerations](docs/SECURITY.md)
 - [Contributing Guidelines](docs/CONTRIBUTING.md)
+- [CI/CD Workflow](docs/CI.md)
 
 ## 🏗️ Project Structure
 
