@@ -1,0 +1,48 @@
+name: Auto Format
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '**.c'
+      - '**.h'
+
+permissions:
+  contents: write
+
+jobs:
+  auto-format:
+    name: Auto Format Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Format code
+        run: |
+          find src tests \( -name '*.c' -o -name '*.h' \) -print | xargs clang-format -i
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No formatting changes needed"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Formatting changes detected"
+          fi
+
+      - name: Commit changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "🤖 Auto-format code with clang-format"
+          git push

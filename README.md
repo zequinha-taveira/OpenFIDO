@@ -101,6 +101,7 @@ make
 - [Security Considerations](docs/SECURITY.md)
 - [Contributing Guidelines](docs/CONTRIBUTING.md)
 - [CI/CD Workflow](docs/CI.md)
+- [Automation Guide](docs/AUTOMATION.md)
 
 ## 🏗️ Project Structure
 
