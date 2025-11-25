@@ -1,0 +1,73 @@
+name: CMake Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-stm32:
+    name: Build STM32
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install ARM Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential cmake
+
+      - name: Install mbedTLS
+        run: |
+          sudo apt-get install -y libmbedtls-dev
+
+      - name: Configure CMake
+        run: |
+          mkdir build_stm32
+          cd build_stm32
+          cmake -DPLATFORM=STM32 ..
+
+      - name: Build
+        run: |
+          cd build_stm32
+          make -j$(nproc)
+
+  build-nrf52:
+    name: Build nRF52
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install ARM Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential cmake
+
+      - name: Cache nRF5 SDK
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: ~/nrf5_sdk
+          key: nrf5-sdk-17.0.2
+
+      - name: Download nRF5 SDK
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v17.x.x/nRF5_SDK_17.0.2_d674dde.zip
+          unzip -q nRF5_SDK_17.0.2_d674dde.zip -d ~/nrf5_sdk
+          rm nRF5_SDK_17.0.2_d674dde.zip
+
+      - name: Configure CMake
+        run: |
+          mkdir build_nrf52
+          cd build_nrf52
+          export NRF5_SDK_ROOT=$HOME/nrf5_sdk/nRF5_SDK_17.0.2_d674dde
+          cmake -DPLATFORM=NRF52 -DCMAKE_TOOLCHAIN_FILE=../cmake/nrf52-toolchain.cmake ..
+
+      - name: Build
+        run: |
+          cd build_nrf52
+          make -j$(nproc)
