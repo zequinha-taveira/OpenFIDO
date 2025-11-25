@@ -151,6 +151,7 @@ header {
     font-size: 3rem;
     margin-bottom: 1rem;
     background: linear-gradient(to right, #fff, #94a3b8);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -281,7 +282,6 @@ header {
 .hidden {
     display: none;
 }
-
 
 .card h3 {
     margin-bottom: 1.5rem;
