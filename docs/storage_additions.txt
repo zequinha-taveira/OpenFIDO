@@ -1,0 +1,20 @@
+/**
+ * @file storage.h (additions)
+ * @brief Additional storage function needed for GetAssertion
+ */
+
+/* Add this function declaration to storage.h */
+
+/**
+ * @brief Find credentials by RP ID hash
+ * 
+ * @param rp_id_hash SHA-256 hash of RP ID
+ * @param credentials Array to store found credentials
+ * @param max_credentials Maximum number of credentials to return
+ * @param count Output: number of credentials found
+ * @return STORAGE_OK on success, error code otherwise
+ */
+int storage_find_credentials_by_rp(const uint8_t *rp_id_hash,
+                                   storage_credential_t *credentials,
+                                   size_t max_credentials,
+                                   size_t *count);
