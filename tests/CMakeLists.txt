@@ -45,6 +45,7 @@ add_executable(run_tests
 # Link mbedTLS
 find_package(MbedTLS REQUIRED)
 target_link_libraries(run_tests MbedTLS::mbedtls MbedTLS::mbedcrypto)
+target_compile_definitions(run_tests PRIVATE USE_MBEDTLS)
 
 # Add tests
 add_test(NAME cbor_tests COMMAND run_tests cbor)

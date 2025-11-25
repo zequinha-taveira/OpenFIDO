@@ -78,6 +78,8 @@ jobs:
         environment:
           - esp32s3
           - esp32s2
+          - stm32f4
+          - nrf52840
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
