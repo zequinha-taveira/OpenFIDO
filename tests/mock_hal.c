@@ -1,15 +1,16 @@
 /**
  * @file mock_hal.c
  * @brief Mock HAL implementation for unit testing
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
 
-#include "hal.h"
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
+
+#include "hal.h"
 
 /* Mock flash storage */
 static uint8_t mock_flash[64 * 1024];
@@ -135,15 +136,14 @@ int hal_crypto_sha256(const uint8_t *data, size_t len, uint8_t *hash)
     return HAL_ERROR_NOT_SUPPORTED;
 }
 
-int hal_crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash,
-                          uint8_t *signature)
+int hal_crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash, uint8_t *signature)
 {
     return HAL_ERROR_NOT_SUPPORTED;
 }
 
 uint64_t hal_get_timestamp_ms(void)
 {
-    return (uint64_t)time(NULL) * 1000;
+    return (uint64_t) time(NULL) * 1000;
 }
 
 void hal_delay_ms(uint32_t ms)

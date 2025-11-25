@@ -1,35 +1,37 @@
 /**
  * @file storage.c
  * @brief Secure Credential Storage Implementation
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
 
 #include "storage.h"
+
+#include <string.h>
+
+#include "buffer.h"
 #include "crypto.h"
 #include "hal.h"
 #include "logger.h"
-#include "buffer.h"
-#include <string.h>
 
 /* Storage layout in flash */
-#define STORAGE_MAGIC           0x46494432  /* "FID2" */
-#define STORAGE_VERSION         1
+#define STORAGE_MAGIC 0x46494432 /* "FID2" */
+#define STORAGE_VERSION 1
 
-#define STORAGE_OFFSET_HEADER   0
-#define STORAGE_OFFSET_PIN      256
-#define STORAGE_OFFSET_COUNTER  512
-#define STORAGE_OFFSET_ATT_KEY  768
-#define STORAGE_OFFSET_CREDS    2048
+#define STORAGE_OFFSET_HEADER 0
+#define STORAGE_OFFSET_PIN 256
+#define STORAGE_OFFSET_COUNTER 512
+#define STORAGE_OFFSET_ATT_KEY 768
+#define STORAGE_OFFSET_CREDS 2048
 
-#define STORAGE_CRED_SIZE       512
+#define STORAGE_CRED_SIZE 512
 
 /* Storage header */
 typedef struct {
     uint32_t magic;
     uint32_t version;
-    uint8_t master_key[32];     /* Device master key (encrypted by HAL) */
+    uint8_t master_key[32]; /* Device master key (encrypted by HAL) */
     uint8_t reserved[216];
 } storage_header_t;
 
@@ -67,7 +69,7 @@ int storage_init(void)
     }
 
     /* Read header */
-    if (hal_flash_read(STORAGE_OFFSET_HEADER, (uint8_t *)&storage_state.header,
+    if (hal_flash_read(STORAGE_OFFSET_HEADER, (uint8_t *) &storage_state.header,
                        sizeof(storage_header_t)) != HAL_OK) {
         LOG_ERROR("Failed to read storage header");
         return STORAGE_ERROR;
@@ -86,14 +88,14 @@ int storage_init(void)
     crypto_random_generate(device_master_key, sizeof(device_master_key));
 
     /* Read PIN data */
-    if (hal_flash_read(STORAGE_OFFSET_PIN, (uint8_t *)&storage_state.pin_data,
+    if (hal_flash_read(STORAGE_OFFSET_PIN, (uint8_t *) &storage_state.pin_data,
                        sizeof(storage_pin_data_t)) != HAL_OK) {
         LOG_ERROR("Failed to read PIN data");
         return STORAGE_ERROR;
     }
 
     /* Read global counter */
-    if (hal_flash_read(STORAGE_OFFSET_COUNTER, (uint8_t *)&storage_state.global_counter,
+    if (hal_flash_read(STORAGE_OFFSET_COUNTER, (uint8_t *) &storage_state.global_counter,
                        sizeof(uint32_t)) != HAL_OK) {
         LOG_ERROR("Failed to read global counter");
         return STORAGE_ERROR;
@@ -130,7 +132,7 @@ int storage_format(void)
     crypto_random_generate(storage_state.header.master_key, 32);
 
     /* Write header */
-    if (hal_flash_write(STORAGE_OFFSET_HEADER, (const uint8_t *)&storage_state.header,
+    if (hal_flash_write(STORAGE_OFFSET_HEADER, (const uint8_t *) &storage_state.header,
                         sizeof(storage_header_t)) != HAL_OK) {
         LOG_ERROR("Failed to write storage header");
         return STORAGE_ERROR;
@@ -141,7 +143,7 @@ int storage_format(void)
     storage_state.pin_data.pin_retries = STORAGE_PIN_MAX_RETRIES;
     storage_state.pin_data.pin_set = false;
 
-    if (hal_flash_write(STORAGE_OFFSET_PIN, (const uint8_t *)&storage_state.pin_data,
+    if (hal_flash_write(STORAGE_OFFSET_PIN, (const uint8_t *) &storage_state.pin_data,
                         sizeof(storage_pin_data_t)) != HAL_OK) {
         LOG_ERROR("Failed to write PIN data");
         return STORAGE_ERROR;
@@ -149,7 +151,7 @@ int storage_format(void)
 
     /* Initialize counter */
     storage_state.global_counter = 0;
-    if (hal_flash_write(STORAGE_OFFSET_COUNTER, (const uint8_t *)&storage_state.global_counter,
+    if (hal_flash_write(STORAGE_OFFSET_COUNTER, (const uint8_t *) &storage_state.global_counter,
                         sizeof(uint32_t)) != HAL_OK) {
         LOG_ERROR("Failed to write counter");
         return STORAGE_ERROR;
@@ -181,8 +183,8 @@ int storage_store_credential(const storage_credential_t *credential)
         storage_flash_credential_t flash_cred;
         uint32_t offset = STORAGE_OFFSET_CREDS + (i * STORAGE_CRED_SIZE);
 
-        if (hal_flash_read(offset, (uint8_t *)&flash_cred,
-                          sizeof(storage_flash_credential_t)) != HAL_OK) {
+        if (hal_flash_read(offset, (uint8_t *) &flash_cred, sizeof(storage_flash_credential_t)) !=
+            HAL_OK) {
             continue;
         }
 
@@ -224,28 +226,28 @@ int storage_store_credential(const storage_credential_t *credential)
     plaintext[offset++] = credential->resident ? 1 : 0;
 
     if (credential->resident) {
-        strncpy((char *)&plaintext[offset], credential->user_name, STORAGE_MAX_USER_NAME_LENGTH);
+        strncpy((char *) &plaintext[offset], credential->user_name, STORAGE_MAX_USER_NAME_LENGTH);
         offset += STORAGE_MAX_USER_NAME_LENGTH;
 
-        strncpy((char *)&plaintext[offset], credential->display_name, STORAGE_MAX_DISPLAY_NAME_LENGTH);
+        strncpy((char *) &plaintext[offset], credential->display_name,
+                STORAGE_MAX_DISPLAY_NAME_LENGTH);
         offset += STORAGE_MAX_DISPLAY_NAME_LENGTH;
 
-        strncpy((char *)&plaintext[offset], credential->rp_id, STORAGE_MAX_RP_ID_LENGTH);
+        strncpy((char *) &plaintext[offset], credential->rp_id, STORAGE_MAX_RP_ID_LENGTH);
         offset += STORAGE_MAX_RP_ID_LENGTH;
     }
 
     /* Encrypt credential */
-    if (crypto_aes_gcm_encrypt(device_master_key, flash_cred.iv,
-                               credential->rp_id_hash, 32,
-                               plaintext, offset,
-                               flash_cred.encrypted_data, flash_cred.tag) != CRYPTO_OK) {
+    if (crypto_aes_gcm_encrypt(device_master_key, flash_cred.iv, credential->rp_id_hash, 32,
+                               plaintext, offset, flash_cred.encrypted_data,
+                               flash_cred.tag) != CRYPTO_OK) {
         LOG_ERROR("Failed to encrypt credential");
         return STORAGE_ERROR;
     }
 
     /* Write to flash */
     uint32_t flash_offset = STORAGE_OFFSET_CREDS + (free_slot * STORAGE_CRED_SIZE);
-    if (hal_flash_write(flash_offset, (const uint8_t *)&flash_cred,
+    if (hal_flash_write(flash_offset, (const uint8_t *) &flash_cred,
                         sizeof(storage_flash_credential_t)) != HAL_OK) {
         LOG_ERROR("Failed to write credential to flash");
         return STORAGE_ERROR;
@@ -269,8 +271,8 @@ int storage_find_credential(const uint8_t *credential_id, storage_credential_t *
         storage_flash_credential_t flash_cred;
         uint32_t offset = STORAGE_OFFSET_CREDS + (i * STORAGE_CRED_SIZE);
 
-        if (hal_flash_read(offset, (uint8_t *)&flash_cred,
-                          sizeof(storage_flash_credential_t)) != HAL_OK) {
+        if (hal_flash_read(offset, (uint8_t *) &flash_cred, sizeof(storage_flash_credential_t)) !=
+            HAL_OK) {
             continue;
         }
 
@@ -283,8 +285,8 @@ int storage_find_credential(const uint8_t *credential_id, storage_credential_t *
             /* Found it - decrypt */
             uint8_t plaintext[400];
 
-            if (crypto_aes_gcm_decrypt(device_master_key, flash_cred.iv,
-                                       NULL, 0,  /* AAD will be in credential */
+            if (crypto_aes_gcm_decrypt(device_master_key, flash_cred.iv, NULL,
+                                       0, /* AAD will be in credential */
                                        flash_cred.encrypted_data, sizeof(flash_cred.encrypted_data),
                                        flash_cred.tag, plaintext) != CRYPTO_OK) {
                 LOG_ERROR("Failed to decrypt credential");
@@ -308,13 +310,16 @@ int storage_find_credential(const uint8_t *credential_id, storage_credential_t *
             credential->resident = (plaintext[off++] == 1);
 
             if (credential->resident) {
-                strncpy(credential->user_name, (const char *)&plaintext[off], STORAGE_MAX_USER_NAME_LENGTH);
+                strncpy(credential->user_name, (const char *) &plaintext[off],
+                        STORAGE_MAX_USER_NAME_LENGTH);
                 off += STORAGE_MAX_USER_NAME_LENGTH;
 
-                strncpy(credential->display_name, (const char *)&plaintext[off], STORAGE_MAX_DISPLAY_NAME_LENGTH);
+                strncpy(credential->display_name, (const char *) &plaintext[off],
+                        STORAGE_MAX_DISPLAY_NAME_LENGTH);
                 off += STORAGE_MAX_DISPLAY_NAME_LENGTH;
 
-                strncpy(credential->rp_id, (const char *)&plaintext[off], STORAGE_MAX_RP_ID_LENGTH);
+                strncpy(credential->rp_id, (const char *) &plaintext[off],
+                        STORAGE_MAX_RP_ID_LENGTH);
             }
 
             memcpy(credential->id, flash_cred.id, STORAGE_CREDENTIAL_ID_LENGTH);
@@ -342,8 +347,8 @@ int storage_update_sign_count(const uint8_t *credential_id, uint32_t new_count)
         storage_flash_credential_t flash_cred;
         uint32_t offset = STORAGE_OFFSET_CREDS + (i * STORAGE_CRED_SIZE);
 
-        if (hal_flash_read(offset, (uint8_t *)&flash_cred,
-                          sizeof(storage_flash_credential_t)) != HAL_OK) {
+        if (hal_flash_read(offset, (uint8_t *) &flash_cred, sizeof(storage_flash_credential_t)) !=
+            HAL_OK) {
             continue;
         }
 
@@ -355,8 +360,8 @@ int storage_update_sign_count(const uint8_t *credential_id, uint32_t new_count)
             /* Update counter */
             flash_cred.sign_count = new_count;
 
-            if (hal_flash_write(offset, (const uint8_t *)&flash_cred,
-                               sizeof(storage_flash_credential_t)) != HAL_OK) {
+            if (hal_flash_write(offset, (const uint8_t *) &flash_cred,
+                                sizeof(storage_flash_credential_t)) != HAL_OK) {
                 LOG_ERROR("Failed to update sign count");
                 return STORAGE_ERROR;
             }
@@ -377,7 +382,7 @@ int storage_get_and_increment_counter(uint32_t *counter)
     *counter = storage_state.global_counter++;
 
     /* Write back to flash */
-    if (hal_flash_write(STORAGE_OFFSET_COUNTER, (const uint8_t *)&storage_state.global_counter,
+    if (hal_flash_write(STORAGE_OFFSET_COUNTER, (const uint8_t *) &storage_state.global_counter,
                         sizeof(uint32_t)) != HAL_OK) {
         LOG_ERROR("Failed to write counter");
         return STORAGE_ERROR;
@@ -403,7 +408,7 @@ int storage_set_pin(const uint8_t *pin, size_t pin_len)
     storage_state.pin_data.pin_retries = STORAGE_PIN_MAX_RETRIES;
 
     /* Write to flash */
-    if (hal_flash_write(STORAGE_OFFSET_PIN, (const uint8_t *)&storage_state.pin_data,
+    if (hal_flash_write(STORAGE_OFFSET_PIN, (const uint8_t *) &storage_state.pin_data,
                         sizeof(storage_pin_data_t)) != HAL_OK) {
         LOG_ERROR("Failed to write PIN data");
         return STORAGE_ERROR;
@@ -435,21 +440,21 @@ int storage_verify_pin(const uint8_t *pin, size_t pin_len)
     if (constant_time_compare(pin_hash, storage_state.pin_data.pin_hash, 32) == 0) {
         /* PIN correct */
         storage_state.pin_data.pin_retries = STORAGE_PIN_MAX_RETRIES;
-        
-        hal_flash_write(STORAGE_OFFSET_PIN, (const uint8_t *)&storage_state.pin_data,
-                       sizeof(storage_pin_data_t));
-        
+
+        hal_flash_write(STORAGE_OFFSET_PIN, (const uint8_t *) &storage_state.pin_data,
+                        sizeof(storage_pin_data_t));
+
         return STORAGE_OK;
     } else {
         /* PIN incorrect */
         storage_state.pin_data.pin_retries--;
-        
-        hal_flash_write(STORAGE_OFFSET_PIN, (const uint8_t *)&storage_state.pin_data,
-                       sizeof(storage_pin_data_t));
-        
+
+        hal_flash_write(STORAGE_OFFSET_PIN, (const uint8_t *) &storage_state.pin_data,
+                        sizeof(storage_pin_data_t));
+
         LOG_WARN("PIN verification failed, %d retries remaining",
                  storage_state.pin_data.pin_retries);
-        
+
         return STORAGE_ERROR;
     }
 }
@@ -511,8 +516,8 @@ int storage_get_credential_count(size_t *count)
         storage_flash_credential_t flash_cred;
         uint32_t offset = STORAGE_OFFSET_CREDS + (i * STORAGE_CRED_SIZE);
 
-        if (hal_flash_read(offset, (uint8_t *)&flash_cred,
-                          sizeof(storage_flash_credential_t)) != HAL_OK) {
+        if (hal_flash_read(offset, (uint8_t *) &flash_cred, sizeof(storage_flash_credential_t)) !=
+            HAL_OK) {
             continue;
         }
 

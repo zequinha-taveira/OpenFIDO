@@ -1,12 +1,13 @@
 /**
  * @file cbor.c
  * @brief CBOR Encoding/Decoding Implementation
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
 
 #include "cbor.h"
+
 #include <string.h>
 
 /* Helper macros */
@@ -31,23 +32,27 @@ static int cbor_encode_type_value(cbor_encoder_t *encoder, uint8_t major_type, u
     if (value < 24) {
         encoder->buffer[encoder->offset++] = CBOR_MAJOR_TYPE(major_type) | value;
     } else if (value <= 0xFF) {
-        if (encoder->offset + 2 > encoder->buffer_size) return CBOR_ERROR_OVERFLOW;
+        if (encoder->offset + 2 > encoder->buffer_size)
+            return CBOR_ERROR_OVERFLOW;
         encoder->buffer[encoder->offset++] = CBOR_MAJOR_TYPE(major_type) | 24;
         encoder->buffer[encoder->offset++] = value;
     } else if (value <= 0xFFFF) {
-        if (encoder->offset + 3 > encoder->buffer_size) return CBOR_ERROR_OVERFLOW;
+        if (encoder->offset + 3 > encoder->buffer_size)
+            return CBOR_ERROR_OVERFLOW;
         encoder->buffer[encoder->offset++] = CBOR_MAJOR_TYPE(major_type) | 25;
         encoder->buffer[encoder->offset++] = (value >> 8) & 0xFF;
         encoder->buffer[encoder->offset++] = value & 0xFF;
     } else if (value <= 0xFFFFFFFF) {
-        if (encoder->offset + 5 > encoder->buffer_size) return CBOR_ERROR_OVERFLOW;
+        if (encoder->offset + 5 > encoder->buffer_size)
+            return CBOR_ERROR_OVERFLOW;
         encoder->buffer[encoder->offset++] = CBOR_MAJOR_TYPE(major_type) | 26;
         encoder->buffer[encoder->offset++] = (value >> 24) & 0xFF;
         encoder->buffer[encoder->offset++] = (value >> 16) & 0xFF;
         encoder->buffer[encoder->offset++] = (value >> 8) & 0xFF;
         encoder->buffer[encoder->offset++] = value & 0xFF;
     } else {
-        if (encoder->offset + 9 > encoder->buffer_size) return CBOR_ERROR_OVERFLOW;
+        if (encoder->offset + 9 > encoder->buffer_size)
+            return CBOR_ERROR_OVERFLOW;
         encoder->buffer[encoder->offset++] = CBOR_MAJOR_TYPE(major_type) | 27;
         for (int i = 7; i >= 0; i--) {
             encoder->buffer[encoder->offset++] = (value >> (i * 8)) & 0xFF;
@@ -74,7 +79,8 @@ int cbor_encode_int(cbor_encoder_t *encoder, int64_t value)
 int cbor_encode_bytes(cbor_encoder_t *encoder, const uint8_t *data, size_t len)
 {
     int ret = cbor_encode_type_value(encoder, CBOR_TYPE_BYTES, len);
-    if (ret != CBOR_OK) return ret;
+    if (ret != CBOR_OK)
+        return ret;
 
     if (encoder->offset + len > encoder->buffer_size) {
         return CBOR_ERROR_OVERFLOW;
@@ -89,7 +95,8 @@ int cbor_encode_bytes(cbor_encoder_t *encoder, const uint8_t *data, size_t len)
 int cbor_encode_text(cbor_encoder_t *encoder, const char *text, size_t len)
 {
     int ret = cbor_encode_type_value(encoder, CBOR_TYPE_TEXT, len);
-    if (ret != CBOR_OK) return ret;
+    if (ret != CBOR_OK)
+        return ret;
 
     if (encoder->offset + len > encoder->buffer_size) {
         return CBOR_ERROR_OVERFLOW;
@@ -107,8 +114,8 @@ int cbor_encode_bool(cbor_encoder_t *encoder, bool value)
         return CBOR_ERROR_OVERFLOW;
     }
 
-    encoder->buffer[encoder->offset++] = CBOR_MAJOR_TYPE(CBOR_TYPE_SIMPLE) | 
-                                         (value ? CBOR_TRUE : CBOR_FALSE);
+    encoder->buffer[encoder->offset++] =
+        CBOR_MAJOR_TYPE(CBOR_TYPE_SIMPLE) | (value ? CBOR_TRUE : CBOR_FALSE);
     return CBOR_OK;
 }
 
@@ -163,22 +170,26 @@ static int cbor_decode_type_value(cbor_decoder_t *decoder, uint8_t expected_type
     if (additional < 24) {
         *value = additional;
     } else if (additional == 24) {
-        if (decoder->offset >= decoder->buffer_size) return CBOR_ERROR_OVERFLOW;
+        if (decoder->offset >= decoder->buffer_size)
+            return CBOR_ERROR_OVERFLOW;
         *value = decoder->buffer[decoder->offset++];
     } else if (additional == 25) {
-        if (decoder->offset + 2 > decoder->buffer_size) return CBOR_ERROR_OVERFLOW;
-        *value = ((uint64_t)decoder->buffer[decoder->offset] << 8) |
+        if (decoder->offset + 2 > decoder->buffer_size)
+            return CBOR_ERROR_OVERFLOW;
+        *value = ((uint64_t) decoder->buffer[decoder->offset] << 8) |
                  decoder->buffer[decoder->offset + 1];
         decoder->offset += 2;
     } else if (additional == 26) {
-        if (decoder->offset + 4 > decoder->buffer_size) return CBOR_ERROR_OVERFLOW;
-        *value = ((uint64_t)decoder->buffer[decoder->offset] << 24) |
-                 ((uint64_t)decoder->buffer[decoder->offset + 1] << 16) |
-                 ((uint64_t)decoder->buffer[decoder->offset + 2] << 8) |
+        if (decoder->offset + 4 > decoder->buffer_size)
+            return CBOR_ERROR_OVERFLOW;
+        *value = ((uint64_t) decoder->buffer[decoder->offset] << 24) |
+                 ((uint64_t) decoder->buffer[decoder->offset + 1] << 16) |
+                 ((uint64_t) decoder->buffer[decoder->offset + 2] << 8) |
                  decoder->buffer[decoder->offset + 3];
         decoder->offset += 4;
     } else if (additional == 27) {
-        if (decoder->offset + 8 > decoder->buffer_size) return CBOR_ERROR_OVERFLOW;
+        if (decoder->offset + 8 > decoder->buffer_size)
+            return CBOR_ERROR_OVERFLOW;
         *value = 0;
         for (int i = 0; i < 8; i++) {
             *value = (*value << 8) | decoder->buffer[decoder->offset++];
@@ -215,10 +226,10 @@ int cbor_decode_int(cbor_decoder_t *decoder, int64_t *value)
 
     if (type == CBOR_TYPE_UNSIGNED) {
         ret = cbor_decode_uint(decoder, &uvalue);
-        *value = (int64_t)uvalue;
+        *value = (int64_t) uvalue;
     } else if (type == CBOR_TYPE_NEGATIVE) {
         ret = cbor_decode_type_value(decoder, CBOR_TYPE_NEGATIVE, &uvalue);
-        *value = -1 - (int64_t)uvalue;
+        *value = -1 - (int64_t) uvalue;
     } else {
         return CBOR_ERROR_INVALID;
     }
@@ -230,7 +241,8 @@ int cbor_decode_bytes(cbor_decoder_t *decoder, uint8_t *data, size_t *len)
 {
     uint64_t byte_len;
     int ret = cbor_decode_type_value(decoder, CBOR_TYPE_BYTES, &byte_len);
-    if (ret != CBOR_OK) return ret;
+    if (ret != CBOR_OK)
+        return ret;
 
     if (decoder->offset + byte_len > decoder->buffer_size) {
         return CBOR_ERROR_OVERFLOW;
@@ -251,7 +263,8 @@ int cbor_decode_text(cbor_decoder_t *decoder, char *text, size_t *len)
 {
     uint64_t text_len;
     int ret = cbor_decode_type_value(decoder, CBOR_TYPE_TEXT, &text_len);
-    if (ret != CBOR_OK) return ret;
+    if (ret != CBOR_OK)
+        return ret;
 
     if (decoder->offset + text_len > decoder->buffer_size) {
         return CBOR_ERROR_OVERFLOW;
@@ -298,9 +311,10 @@ int cbor_decode_map_start(cbor_decoder_t *decoder, size_t *count)
 {
     uint64_t map_count;
     int ret = cbor_decode_type_value(decoder, CBOR_TYPE_MAP, &map_count);
-    if (ret != CBOR_OK) return ret;
+    if (ret != CBOR_OK)
+        return ret;
 
-    *count = (size_t)map_count;
+    *count = (size_t) map_count;
     return CBOR_OK;
 }
 
@@ -308,9 +322,10 @@ int cbor_decode_array_start(cbor_decoder_t *decoder, size_t *count)
 {
     uint64_t array_count;
     int ret = cbor_decode_type_value(decoder, CBOR_TYPE_ARRAY, &array_count);
-    if (ret != CBOR_OK) return ret;
+    if (ret != CBOR_OK)
+        return ret;
 
-    *count = (size_t)array_count;
+    *count = (size_t) array_count;
     return CBOR_OK;
 }
 
@@ -354,7 +369,8 @@ int cbor_decoder_skip(cbor_decoder_t *decoder)
             if (ret == CBOR_OK) {
                 for (size_t i = 0; i < count; i++) {
                     ret = cbor_decoder_skip(decoder);
-                    if (ret != CBOR_OK) break;
+                    if (ret != CBOR_OK)
+                        break;
                 }
             }
             break;

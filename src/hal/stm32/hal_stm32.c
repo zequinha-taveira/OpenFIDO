@@ -1,9 +1,9 @@
 /**
  * @file hal_stm32.c
  * @brief STM32 Hardware Abstraction Layer Implementation
- * 
+ *
  * Uses STM32 HAL APIs for hardware access
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
@@ -13,20 +13,21 @@
 
 #ifdef STM32
 
+#include <string.h>
+
 #include "stm32f4xx_hal.h"
 #include "usbd_core.h"
 #include "usbd_hid.h"
-#include <string.h>
 
 /* GPIO Configuration */
-#define BUTTON_PIN      GPIO_PIN_0
-#define BUTTON_PORT     GPIOA
-#define LED_PIN         GPIO_PIN_5
-#define LED_PORT        GPIOA
+#define BUTTON_PIN GPIO_PIN_0
+#define BUTTON_PORT GPIOA
+#define LED_PIN GPIO_PIN_5
+#define LED_PORT GPIOA
 
 /* Flash Configuration */
-#define FLASH_USER_START_ADDR   0x08010000  /* Sector 4 */
-#define FLASH_USER_END_ADDR     0x0801FFFF
+#define FLASH_USER_START_ADDR 0x08010000 /* Sector 4 */
+#define FLASH_USER_END_ADDR 0x0801FFFF
 
 /* Global state */
 static struct {
@@ -45,7 +46,7 @@ int hal_init(void)
     HAL_Init();
 
     /* Configure system clock (should be done in SystemClock_Config) */
-    
+
     hal_stm32_state.initialized = true;
     LOG_INFO("STM32 HAL initialized");
 
@@ -83,7 +84,7 @@ int hal_usb_send(const uint8_t *data, size_t len)
         return HAL_ERROR;
     }
 
-    if (USBD_HID_SendReport(&hal_stm32_state.usb_device, (uint8_t *)data, len) == USBD_OK) {
+    if (USBD_HID_SendReport(&hal_stm32_state.usb_device, (uint8_t *) data, len) == USBD_OK) {
         return len;
     }
 
@@ -102,12 +103,13 @@ int hal_usb_receive(uint8_t *data, size_t max_len, uint32_t timeout_ms)
     while (1) {
         /* Check if data available */
         /* Note: This assumes the USB middleware provides a way to check for received data.
-           In a real STM32 USB HID implementation, data is usually received via callback (USBD_HID_DataOut).
-           We would need a ring buffer to store received data and read from it here.
-           For this implementation, we'll simulate a check or assume a global buffer is filled by the ISR.
-           Since we can't change the whole USB stack here, we will add a TODO and a basic timeout loop.
+           In a real STM32 USB HID implementation, data is usually received via callback
+           (USBD_HID_DataOut). We would need a ring buffer to store received data and read from it
+           here. For this implementation, we'll simulate a check or assume a global buffer is filled
+           by the ISR. Since we can't change the whole USB stack here, we will add a TODO and a
+           basic timeout loop.
         */
-        
+
         // TODO: Implement ring buffer read here.
         // For now, we return 0 to indicate no data if we are just polling without a buffer.
         // But to satisfy the "robustness" requirement, we at least handle the timeout correctly.
@@ -149,7 +151,7 @@ int hal_flash_read(uint32_t offset, uint8_t *data, size_t len)
         return HAL_ERROR;
     }
 
-    memcpy(data, (void *)address, len);
+    memcpy(data, (void *) address, len);
     return HAL_OK;
 }
 
@@ -189,46 +191,31 @@ static uint32_t GetSector(uint32_t Address)
 {
     uint32_t sector = 0;
 
-    if((Address < 0x08004000) && (Address >= 0x08000000))
-    {
+    if ((Address < 0x08004000) && (Address >= 0x08000000)) {
         sector = FLASH_SECTOR_0;
-    }
-    else if((Address < 0x08008000) && (Address >= 0x08004000))
-    {
+    } else if ((Address < 0x08008000) && (Address >= 0x08004000)) {
         sector = FLASH_SECTOR_1;
-    }
-    else if((Address < 0x0800C000) && (Address >= 0x08008000))
-    {
+    } else if ((Address < 0x0800C000) && (Address >= 0x08008000)) {
         sector = FLASH_SECTOR_2;
-    }
-    else if((Address < 0x08010000) && (Address >= 0x0800C000))
-    {
+    } else if ((Address < 0x08010000) && (Address >= 0x0800C000)) {
         sector = FLASH_SECTOR_3;
-    }
-    else if((Address < 0x08020000) && (Address >= 0x08010000))
-    {
+    } else if ((Address < 0x08020000) && (Address >= 0x08010000)) {
         sector = FLASH_SECTOR_4;
-    }
-    else if((Address < 0x08040000) && (Address >= 0x08020000))
-    {
+    } else if ((Address < 0x08040000) && (Address >= 0x08020000)) {
         sector = FLASH_SECTOR_5;
-    }
-    else if((Address < 0x08060000) && (Address >= 0x08040000))
-    {
+    } else if ((Address < 0x08060000) && (Address >= 0x08040000)) {
         sector = FLASH_SECTOR_6;
-    }
-    else if((Address < 0x08080000) && (Address >= 0x08060000))
-    {
+    } else if ((Address < 0x08080000) && (Address >= 0x08060000)) {
         sector = FLASH_SECTOR_7;
     }
-    
+
     return sector;
 }
 
 int hal_flash_erase(uint32_t offset)
 {
     uint32_t address = FLASH_USER_START_ADDR + offset;
-    
+
     if (address > FLASH_USER_END_ADDR) {
         return HAL_ERROR;
     }
@@ -307,8 +294,8 @@ int hal_button_init(void)
 hal_button_state_t hal_button_get_state(void)
 {
     /* Button is active low */
-    return (HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN) == GPIO_PIN_RESET) ?
-           HAL_BUTTON_PRESSED : HAL_BUTTON_RELEASED;
+    return (HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN) == GPIO_PIN_RESET) ? HAL_BUTTON_PRESSED
+                                                                         : HAL_BUTTON_RELEASED;
 }
 
 bool hal_button_wait_press(uint32_t timeout_ms)
@@ -390,8 +377,7 @@ int hal_crypto_sha256(const uint8_t *data, size_t len, uint8_t *hash)
     return HAL_ERROR_NOT_SUPPORTED;
 }
 
-int hal_crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash,
-                          uint8_t *signature)
+int hal_crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash, uint8_t *signature)
 {
     return HAL_ERROR_NOT_SUPPORTED;
 }
@@ -416,7 +402,7 @@ int hal_watchdog_init(uint32_t timeout_ms)
 {
     hiwdg.Instance = IWDG;
     hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
-    hiwdg.Init.Reload = (timeout_ms * 32) / 1000;  /* Simplified calculation */
+    hiwdg.Init.Reload = (timeout_ms * 32) / 1000; /* Simplified calculation */
 
     return (HAL_IWDG_Init(&hiwdg) == HAL_OK) ? HAL_OK : HAL_ERROR;
 }

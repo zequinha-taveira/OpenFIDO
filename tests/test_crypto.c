@@ -1,43 +1,41 @@
 /**
  * @file test_crypto.c
  * @brief Unit tests for cryptographic operations
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
 
-#include "crypto.h"
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 
-#define TEST_ASSERT(condition) \
-    do { \
-        if (!(condition)) { \
+#include "crypto.h"
+
+#define TEST_ASSERT(condition)                                            \
+    do {                                                                  \
+        if (!(condition)) {                                               \
             printf("FAIL: %s:%d - %s\n", __FILE__, __LINE__, #condition); \
-            return 1; \
-        } \
-    } while(0)
+            return 1;                                                     \
+        }                                                                 \
+    } while (0)
 
-#define TEST_PASS() \
-    do { \
+#define TEST_PASS()                     \
+    do {                                \
         printf("PASS: %s\n", __func__); \
-        return 0; \
-    } while(0)
+        return 0;                       \
+    } while (0)
 
 /* Test SHA-256 */
 int test_crypto_sha256(void)
 {
     uint8_t data[] = "test";
     uint8_t hash[32];
-    
+
     /* Known SHA-256 hash of "test" */
-    uint8_t expected[32] = {
-        0x9f, 0x86, 0xd0, 0x81, 0x88, 0x4c, 0x7d, 0x65,
-        0x9a, 0x2f, 0xea, 0xa0, 0xc5, 0x5a, 0xd0, 0x15,
-        0xa3, 0xbf, 0x4f, 0x1b, 0x2b, 0x0b, 0x82, 0x2c,
-        0xd1, 0x5d, 0x6c, 0x15, 0xb0, 0xf0, 0x0a, 0x08
-    };
+    uint8_t expected[32] = {0x9f, 0x86, 0xd0, 0x81, 0x88, 0x4c, 0x7d, 0x65, 0x9a, 0x2f, 0xea,
+                            0xa0, 0xc5, 0x5a, 0xd0, 0x15, 0xa3, 0xbf, 0x4f, 0x1b, 0x2b, 0x0b,
+                            0x82, 0x2c, 0xd1, 0x5d, 0x6c, 0x15, 0xb0, 0xf0, 0x0a, 0x08};
 
     TEST_ASSERT(crypto_init() == CRYPTO_OK);
     TEST_ASSERT(crypto_sha256(data, 4, hash) == CRYPTO_OK);
@@ -99,16 +97,14 @@ int test_crypto_aes_gcm(void)
     uint8_t tag[16];
 
     TEST_ASSERT(crypto_init() == CRYPTO_OK);
-    
+
     /* Encrypt */
-    TEST_ASSERT(crypto_aes_gcm_encrypt(key, iv, NULL, 0,
-                                       plaintext, sizeof(plaintext),
-                                       ciphertext, tag) == CRYPTO_OK);
+    TEST_ASSERT(crypto_aes_gcm_encrypt(key, iv, NULL, 0, plaintext, sizeof(plaintext), ciphertext,
+                                       tag) == CRYPTO_OK);
 
     /* Decrypt */
-    TEST_ASSERT(crypto_aes_gcm_decrypt(key, iv, NULL, 0,
-                                       ciphertext, sizeof(plaintext),
-                                       tag, decrypted) == CRYPTO_OK);
+    TEST_ASSERT(crypto_aes_gcm_decrypt(key, iv, NULL, 0, ciphertext, sizeof(plaintext), tag,
+                                       decrypted) == CRYPTO_OK);
 
     /* Verify */
     TEST_ASSERT(memcmp(plaintext, decrypted, sizeof(plaintext)) == 0);
@@ -140,9 +136,8 @@ int test_crypto_hmac(void)
     uint8_t hmac[32];
 
     TEST_ASSERT(crypto_init() == CRYPTO_OK);
-    TEST_ASSERT(crypto_hmac_sha256(key, sizeof(key) - 1,
-                                   data, sizeof(data) - 1,
-                                   hmac) == CRYPTO_OK);
+    TEST_ASSERT(crypto_hmac_sha256(key, sizeof(key) - 1, data, sizeof(data) - 1, hmac) ==
+                CRYPTO_OK);
 
     /* HMAC should not be all zeros */
     int all_zero = 1;

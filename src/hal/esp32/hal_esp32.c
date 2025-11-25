@@ -1,9 +1,9 @@
 /**
  * @file hal_esp32.c
  * @brief ESP32 Hardware Abstraction Layer Implementation
- * 
+ *
  * Uses ESP-IDF APIs for hardware access
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
@@ -13,42 +13,42 @@
 
 #ifdef ESP_PLATFORM
 
-#include "esp_system.h"
-#include "esp_random.h"
-#include "nvs_flash.h"
-#include "nvs.h"
 #include "driver/gpio.h"
+#include "esp_random.h"
+#include "esp_system.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_timer.h"
+#include "nvs.h"
+#include "nvs_flash.h"
 #include "tinyusb.h"
 #include "tusb_cdc_acm.h"
 
 /* GPIO Configuration */
-#define BUTTON_GPIO     GPIO_NUM_0      /* Boot button */
-#define LED_GPIO        GPIO_NUM_2      /* Built-in LED */
+#define BUTTON_GPIO GPIO_NUM_0 /* Boot button */
+#define LED_GPIO GPIO_NUM_2    /* Built-in LED */
 
 /* NVS Configuration */
-#define NVS_NAMESPACE   "openfido"
+#define NVS_NAMESPACE "openfido"
 
 /* USB HID Report Descriptor for FIDO */
 static const uint8_t hid_report_descriptor[] = {
-    0x06, 0xD0, 0xF1,  /* Usage Page (FIDO Alliance) */
-    0x09, 0x01,        /* Usage (U2F HID Authenticator Device) */
-    0xA1, 0x01,        /* Collection (Application) */
-    0x09, 0x20,        /*   Usage (Input Report Data) */
-    0x15, 0x00,        /*   Logical Minimum (0) */
-    0x26, 0xFF, 0x00,  /*   Logical Maximum (255) */
-    0x75, 0x08,        /*   Report Size (8) */
-    0x95, 0x40,        /*   Report Count (64) */
-    0x81, 0x02,        /*   Input (Data, Variable, Absolute) */
-    0x09, 0x21,        /*   Usage (Output Report Data) */
-    0x15, 0x00,        /*   Logical Minimum (0) */
-    0x26, 0xFF, 0x00,  /*   Logical Maximum (255) */
-    0x75, 0x08,        /*   Report Size (8) */
-    0x95, 0x40,        /*   Report Count (64) */
-    0x91, 0x02,        /*   Output (Data, Variable, Absolute) */
-    0xC0               /* End Collection */
+    0x06, 0xD0, 0xF1, /* Usage Page (FIDO Alliance) */
+    0x09, 0x01,       /* Usage (U2F HID Authenticator Device) */
+    0xA1, 0x01,       /* Collection (Application) */
+    0x09, 0x20,       /*   Usage (Input Report Data) */
+    0x15, 0x00,       /*   Logical Minimum (0) */
+    0x26, 0xFF, 0x00, /*   Logical Maximum (255) */
+    0x75, 0x08,       /*   Report Size (8) */
+    0x95, 0x40,       /*   Report Count (64) */
+    0x81, 0x02,       /*   Input (Data, Variable, Absolute) */
+    0x09, 0x21,       /*   Usage (Output Report Data) */
+    0x15, 0x00,       /*   Logical Minimum (0) */
+    0x26, 0xFF, 0x00, /*   Logical Maximum (255) */
+    0x75, 0x08,       /*   Report Size (8) */
+    0x95, 0x40,       /*   Report Count (64) */
+    0x91, 0x02,       /*   Output (Data, Variable, Absolute) */
+    0xC0              /* End Collection */
 };
 
 /* Global state */
@@ -175,7 +175,7 @@ int hal_usb_receive(uint8_t *data, size_t max_len, uint32_t timeout_ms)
 
     /* Poll for data with timeout */
     uint32_t start = esp_timer_get_time() / 1000;
-    
+
     while (1) {
         if (tud_hid_available()) {
             uint16_t count = tud_hid_n_read(0, data, max_len);
@@ -264,7 +264,7 @@ int hal_flash_erase(uint32_t offset)
 
 size_t hal_flash_get_size(void)
 {
-    return 64 * 1024;  /* 64KB virtual flash via NVS */
+    return 64 * 1024; /* 64KB virtual flash via NVS */
 }
 
 /* ========== Random Number Generation ========== */
@@ -366,8 +366,7 @@ int hal_crypto_sha256(const uint8_t *data, size_t len, uint8_t *hash)
     return HAL_ERROR_NOT_SUPPORTED;
 }
 
-int hal_crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash,
-                          uint8_t *signature)
+int hal_crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash, uint8_t *signature)
 {
     /* Not implemented - use software crypto */
     return HAL_ERROR_NOT_SUPPORTED;

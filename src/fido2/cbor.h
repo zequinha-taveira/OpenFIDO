@@ -1,10 +1,10 @@
 /**
  * @file cbor.h
  * @brief CBOR Encoding/Decoding for CTAP2
- * 
+ *
  * Lightweight CBOR implementation for FIDO2 CTAP2 protocol messages.
  * Supports the subset of CBOR needed for CTAP2 communication.
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
@@ -12,52 +12,52 @@
 #ifndef CBOR_H
 #define CBOR_H
 
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* CBOR Major Types */
-#define CBOR_TYPE_UNSIGNED  0
-#define CBOR_TYPE_NEGATIVE  1
-#define CBOR_TYPE_BYTES     2
-#define CBOR_TYPE_TEXT      3
-#define CBOR_TYPE_ARRAY     4
-#define CBOR_TYPE_MAP       5
-#define CBOR_TYPE_TAG       6
-#define CBOR_TYPE_SIMPLE    7
+#define CBOR_TYPE_UNSIGNED 0
+#define CBOR_TYPE_NEGATIVE 1
+#define CBOR_TYPE_BYTES 2
+#define CBOR_TYPE_TEXT 3
+#define CBOR_TYPE_ARRAY 4
+#define CBOR_TYPE_MAP 5
+#define CBOR_TYPE_TAG 6
+#define CBOR_TYPE_SIMPLE 7
 
 /* CBOR Simple Values */
-#define CBOR_FALSE          20
-#define CBOR_TRUE           21
-#define CBOR_NULL           22
-#define CBOR_UNDEFINED      23
+#define CBOR_FALSE 20
+#define CBOR_TRUE 21
+#define CBOR_NULL 22
+#define CBOR_UNDEFINED 23
 
 /* Return Codes */
-#define CBOR_OK             0
-#define CBOR_ERROR          -1
+#define CBOR_OK 0
+#define CBOR_ERROR -1
 #define CBOR_ERROR_OVERFLOW -2
-#define CBOR_ERROR_INVALID  -3
+#define CBOR_ERROR_INVALID -3
 
 /**
  * @brief CBOR Encoder Context
  */
 typedef struct {
-    uint8_t *buffer;        /**< Output buffer */
-    size_t buffer_size;     /**< Size of buffer */
-    size_t offset;          /**< Current write offset */
+    uint8_t *buffer;    /**< Output buffer */
+    size_t buffer_size; /**< Size of buffer */
+    size_t offset;      /**< Current write offset */
 } cbor_encoder_t;
 
 /**
  * @brief CBOR Decoder Context
  */
 typedef struct {
-    const uint8_t *buffer;  /**< Input buffer */
-    size_t buffer_size;     /**< Size of buffer */
-    size_t offset;          /**< Current read offset */
+    const uint8_t *buffer; /**< Input buffer */
+    size_t buffer_size;    /**< Size of buffer */
+    size_t offset;         /**< Current read offset */
 } cbor_decoder_t;
 
 /* ========== Encoder Functions ========== */

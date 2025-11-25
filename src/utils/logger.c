@@ -1,7 +1,7 @@
 /**
  * @file logger.c
  * @brief Logging Utilities Implementation
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
