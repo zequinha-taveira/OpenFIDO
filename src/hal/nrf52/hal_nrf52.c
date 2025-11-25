@@ -149,6 +149,9 @@ int hal_usb_receive(uint8_t *data, size_t max_len, uint32_t timeout_ms)
     /* Poll for data */
     while (1) {
         /* Check for USB data (implementation specific) */
+        /* TODO: Implement actual data reading from nRF5 SDK USB stack.
+           Usually involves checking a ring buffer filled by USBD events.
+        */
 
         if (timeout_ms > 0) {
             uint32_t elapsed = app_timer_cnt_diff_compute(app_timer_cnt_get(), start);
@@ -344,8 +347,9 @@ int hal_led_set_state(hal_led_state_t state)
 
 bool hal_crypto_is_available(void)
 {
-    /* nRF52840 has hardware AES acceleration */
-    return true;
+    /* nRF52840 has hardware AES acceleration, but we are not implementing it yet.
+       Return false to force software fallback (mbedTLS). */
+    return false;
 }
 
 int hal_crypto_sha256(const uint8_t *data, size_t len, uint8_t *hash)
