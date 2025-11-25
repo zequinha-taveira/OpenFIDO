@@ -353,19 +353,19 @@ int hal_led_init(void)
     nrf_gpio_pin_clear(LED_PIN);
 
     /* Create LED timer */
-    ret_code_t ret = app_timer_create(&hal_nrf52_state.led_timer,
-                                       APP_TIMER_MODE_REPEATED,
-                                       led_timer_handler);
+    ret_code_t ret =
+        app_timer_create(&hal_nrf52_state.led_timer, APP_TIMER_MODE_REPEATED, led_timer_handler);
     if (ret != NRF_SUCCESS) {
         return HAL_ERROR;
     }
 
     /* Start timer with a base tick.
        Real implementation would change timer interval based on state.
-       For now, we use a fast tick to support both fast and slow blinking via counter or just fast blink.
-       Let's use CONFIG_LED_BLINK_FAST_MS as the base tick.
+       For now, we use a fast tick to support both fast and slow blinking via counter or just fast
+       blink. Let's use CONFIG_LED_BLINK_FAST_MS as the base tick.
     */
-    ret = app_timer_start(hal_nrf52_state.led_timer, APP_TIMER_TICKS(CONFIG_LED_BLINK_FAST_MS), NULL);
+    ret =
+        app_timer_start(hal_nrf52_state.led_timer, APP_TIMER_TICKS(CONFIG_LED_BLINK_FAST_MS), NULL);
     if (ret != NRF_SUCCESS) {
         return HAL_ERROR;
     }

@@ -9,14 +9,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "config.h"
 #include "crypto.h"
 #include "ctap2.h"
 #include "hal.h"
 #include "logger.h"
 #include "storage.h"
 #include "usb_hid.h"
-
-#include "config.h"
 
 #define APP_VERSION "1.0.0"
 
