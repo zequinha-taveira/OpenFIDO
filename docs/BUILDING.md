@@ -144,61 +144,6 @@ openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
 ### Using STM32CubeIDE
 
 1. Import project into STM32CubeIDE
-2. Configure build settings
-3. Build project (Ctrl+B)
-4. Debug/Run (F11/F5)
-
-## Building for Nordic nRF52
-
-### Using nRF5 SDK
-
-1. **Install nRF5 SDK**
-
-```bash
-wget https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v17.x.x/nRF5_SDK_17.0.2_d674dde.zip
-unzip nRF5_SDK_17.0.2_d674dde.zip -d ~/nrf5_sdk
-```
-
-2. **Install ARM Toolchain**
-
-```bash
-# Same as STM32 section
-```
-
-3. **Configure SDK Path**
-
-Edit `Makefile.posix` or `Makefile.windows`:
-```makefile
-GNU_INSTALL_ROOT := /usr/local/gcc-arm-none-eabi-10-2020-q4-major/bin/
-SDK_ROOT := ~/nrf5_sdk/
-```
-
-4. **Build**
-
-```bash
-cd OpenFIDO/platforms/nrf52
-make
-```
-
-5. **Flash**
-
-```bash
-# Using nrfjprog
-nrfjprog --program _build/openfido.hex --chiperase --verify
-nrfjprog --reset
-
-# Using J-Link
-JLinkExe -device NRF52840_XXAA -if SWD -speed 4000
-> loadfile _build/openfido.hex
-> r
-> g
-> q
-```
-
-## Build Configurations
-
-### Debug Build
-
 ```bash
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 make
