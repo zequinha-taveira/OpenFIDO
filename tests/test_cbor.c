@@ -1,30 +1,31 @@
 /**
  * @file test_cbor.c
  * @brief Unit tests for CBOR encoder/decoder
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
 
-#include "cbor.h"
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
+
+#include "cbor.h"
 
 /* Test helper macros */
-#define TEST_ASSERT(condition) \
-    do { \
-        if (!(condition)) { \
+#define TEST_ASSERT(condition)                                            \
+    do {                                                                  \
+        if (!(condition)) {                                               \
             printf("FAIL: %s:%d - %s\n", __FILE__, __LINE__, #condition); \
-            return 1; \
-        } \
-    } while(0)
+            return 1;                                                     \
+        }                                                                 \
+    } while (0)
 
-#define TEST_PASS() \
-    do { \
+#define TEST_PASS()                     \
+    do {                                \
         printf("PASS: %s\n", __func__); \
-        return 0; \
-    } while(0)
+        return 0;                       \
+    } while (0)
 
 /* Test encoding unsigned integers */
 int test_cbor_encode_uint(void)
@@ -78,11 +79,11 @@ int test_cbor_encode_map(void)
 
     cbor_encoder_init(&encoder, buffer, sizeof(buffer));
     TEST_ASSERT(cbor_encode_map_start(&encoder, 2) == CBOR_OK);
-    
+
     /* Key 1 */
     TEST_ASSERT(cbor_encode_uint(&encoder, 1) == CBOR_OK);
     TEST_ASSERT(cbor_encode_text(&encoder, "test", 4) == CBOR_OK);
-    
+
     /* Key 2 */
     TEST_ASSERT(cbor_encode_uint(&encoder, 2) == CBOR_OK);
     TEST_ASSERT(cbor_encode_bool(&encoder, true) == CBOR_OK);

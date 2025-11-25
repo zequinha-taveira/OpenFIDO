@@ -1,28 +1,29 @@
 /**
  * @file crypto.c
  * @brief Cryptographic Operations Implementation
- * 
+ *
  * Uses mbedTLS for cryptographic primitives
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
 
 #include "crypto.h"
+
+#include "buffer.h"
 #include "hal.h"
 #include "logger.h"
-#include "buffer.h"
 
 #ifdef USE_MBEDTLS
-#include "mbedtls/ecdsa.h"
-#include "mbedtls/ecp.h"
-#include "mbedtls/sha256.h"
-#include "mbedtls/gcm.h"
-#include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/ecdh.h"
+#include "mbedtls/ecdsa.h"
+#include "mbedtls/ecp.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/gcm.h"
 #include "mbedtls/hkdf.h"
 #include "mbedtls/md.h"
+#include "mbedtls/sha256.h"
 #endif
 
 #include <string.h>
@@ -45,9 +46,8 @@ int crypto_init(void)
     mbedtls_ctr_drbg_init(&crypto_ctx.ctr_drbg);
 
     const char *pers = "openfido_fido2";
-    int ret = mbedtls_ctr_drbg_seed(&crypto_ctx.ctr_drbg, mbedtls_entropy_func,
-                                     &crypto_ctx.entropy,
-                                     (const unsigned char *)pers, strlen(pers));
+    int ret = mbedtls_ctr_drbg_seed(&crypto_ctx.ctr_drbg, mbedtls_entropy_func, &crypto_ctx.entropy,
+                                    (const unsigned char *) pers, strlen(pers));
     if (ret != 0) {
         LOG_ERROR("mbedTLS DRBG seed failed: %d", ret);
         return CRYPTO_ERROR;
@@ -84,8 +84,7 @@ int crypto_sha256(const uint8_t *data, size_t data_len, uint8_t *hash)
 #else
     /* Fallback: use HAL if available */
     if (hal_crypto_is_available()) {
-        return (hal_crypto_sha256(data, data_len, hash) == HAL_OK) ? 
-               CRYPTO_OK : CRYPTO_ERROR;
+        return (hal_crypto_sha256(data, data_len, hash) == HAL_OK) ? CRYPTO_OK : CRYPTO_ERROR;
     }
     return CRYPTO_ERROR;
 #endif
@@ -93,8 +92,7 @@ int crypto_sha256(const uint8_t *data, size_t data_len, uint8_t *hash)
     return CRYPTO_OK;
 }
 
-int crypto_hmac_sha256(const uint8_t *key, size_t key_len,
-                       const uint8_t *data, size_t data_len,
+int crypto_hmac_sha256(const uint8_t *key, size_t key_len, const uint8_t *data, size_t data_len,
                        uint8_t *hmac)
 {
     if (!crypto_ctx.initialized || key == NULL || data == NULL || hmac == NULL) {
@@ -175,8 +173,7 @@ cleanup:
 #endif
 }
 
-int crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash,
-                      uint8_t *signature)
+int crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash, uint8_t *signature)
 {
     if (!crypto_ctx.initialized || private_key == NULL || hash == NULL || signature == NULL) {
         return CRYPTO_ERROR_INVALID_PARAM;
@@ -206,8 +203,8 @@ int crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash,
     }
 
     /* Sign */
-    ret = mbedtls_ecdsa_sign(&grp, &r, &s, &d, hash, 32,
-                             mbedtls_ctr_drbg_random, &crypto_ctx.ctr_drbg);
+    ret = mbedtls_ecdsa_sign(&grp, &r, &s, &d, hash, 32, mbedtls_ctr_drbg_random,
+                             &crypto_ctx.ctr_drbg);
     if (ret != 0) {
         LOG_ERROR("ECDSA signing failed: %d", ret);
         goto cleanup;
@@ -236,15 +233,14 @@ cleanup:
 #else
     /* Try hardware acceleration */
     if (hal_crypto_is_available()) {
-        return (hal_crypto_ecdsa_sign(private_key, hash, signature) == HAL_OK) ?
-               CRYPTO_OK : CRYPTO_ERROR;
+        return (hal_crypto_ecdsa_sign(private_key, hash, signature) == HAL_OK) ? CRYPTO_OK
+                                                                               : CRYPTO_ERROR;
     }
     return CRYPTO_ERROR;
 #endif
 }
 
-int crypto_ecdsa_verify(const uint8_t *public_key, const uint8_t *hash,
-                        const uint8_t *signature)
+int crypto_ecdsa_verify(const uint8_t *public_key, const uint8_t *hash, const uint8_t *signature)
 {
     if (!crypto_ctx.initialized || public_key == NULL || hash == NULL || signature == NULL) {
         return CRYPTO_ERROR_INVALID_PARAM;
@@ -262,24 +258,30 @@ int crypto_ecdsa_verify(const uint8_t *public_key, const uint8_t *hash,
 
     /* Load P-256 curve */
     int ret = mbedtls_ecp_group_load(&grp, MBEDTLS_ECP_DP_SECP256R1);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     /* Load public key */
     ret = mbedtls_mpi_read_binary(&Q.X, &public_key[0], 32);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_mpi_read_binary(&Q.Y, &public_key[32], 32);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_mpi_lset(&Q.Z, 1);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     /* Load signature */
     ret = mbedtls_mpi_read_binary(&r, &signature[0], 32);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_mpi_read_binary(&s, &signature[32], 32);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     /* Verify */
     ret = mbedtls_ecdsa_verify(&grp, hash, 32, &Q, &r, &s);
@@ -312,16 +314,20 @@ int crypto_ecdsa_get_public_key(const uint8_t *private_key, uint8_t *public_key)
     mbedtls_ecp_point_init(&Q);
 
     int ret = mbedtls_ecp_group_load(&grp, MBEDTLS_ECP_DP_SECP256R1);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_mpi_read_binary(&d, private_key, 32);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_ecp_mul(&grp, &Q, &d, &grp.G, mbedtls_ctr_drbg_random, &crypto_ctx.ctr_drbg);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_mpi_write_binary(&Q.X, &public_key[0], 32);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_mpi_write_binary(&Q.Y, &public_key[32], 32);
 
@@ -336,13 +342,12 @@ cleanup:
 #endif
 }
 
-int crypto_aes_gcm_encrypt(const uint8_t *key, const uint8_t *iv,
-                           const uint8_t *aad, size_t aad_len,
-                           const uint8_t *plaintext, size_t plaintext_len,
+int crypto_aes_gcm_encrypt(const uint8_t *key, const uint8_t *iv, const uint8_t *aad,
+                           size_t aad_len, const uint8_t *plaintext, size_t plaintext_len,
                            uint8_t *ciphertext, uint8_t *tag)
 {
-    if (!crypto_ctx.initialized || key == NULL || iv == NULL || 
-        plaintext == NULL || ciphertext == NULL || tag == NULL) {
+    if (!crypto_ctx.initialized || key == NULL || iv == NULL || plaintext == NULL ||
+        ciphertext == NULL || tag == NULL) {
         return CRYPTO_ERROR_INVALID_PARAM;
     }
 
@@ -356,11 +361,8 @@ int crypto_aes_gcm_encrypt(const uint8_t *key, const uint8_t *iv,
         goto cleanup;
     }
 
-    ret = mbedtls_gcm_crypt_and_tag(&gcm, MBEDTLS_GCM_ENCRYPT,
-                                     plaintext_len, iv, 12,
-                                     aad, aad_len,
-                                     plaintext, ciphertext,
-                                     16, tag);
+    ret = mbedtls_gcm_crypt_and_tag(&gcm, MBEDTLS_GCM_ENCRYPT, plaintext_len, iv, 12, aad, aad_len,
+                                    plaintext, ciphertext, 16, tag);
     if (ret != 0) {
         LOG_ERROR("GCM encrypt failed: %d", ret);
     }
@@ -373,13 +375,12 @@ cleanup:
 #endif
 }
 
-int crypto_aes_gcm_decrypt(const uint8_t *key, const uint8_t *iv,
-                           const uint8_t *aad, size_t aad_len,
-                           const uint8_t *ciphertext, size_t ciphertext_len,
+int crypto_aes_gcm_decrypt(const uint8_t *key, const uint8_t *iv, const uint8_t *aad,
+                           size_t aad_len, const uint8_t *ciphertext, size_t ciphertext_len,
                            const uint8_t *tag, uint8_t *plaintext)
 {
-    if (!crypto_ctx.initialized || key == NULL || iv == NULL ||
-        ciphertext == NULL || tag == NULL || plaintext == NULL) {
+    if (!crypto_ctx.initialized || key == NULL || iv == NULL || ciphertext == NULL || tag == NULL ||
+        plaintext == NULL) {
         return CRYPTO_ERROR_INVALID_PARAM;
     }
 
@@ -393,10 +394,8 @@ int crypto_aes_gcm_decrypt(const uint8_t *key, const uint8_t *iv,
         goto cleanup;
     }
 
-    ret = mbedtls_gcm_auth_decrypt(&gcm, ciphertext_len, iv, 12,
-                                    aad, aad_len,
-                                    tag, 16,
-                                    ciphertext, plaintext);
+    ret = mbedtls_gcm_auth_decrypt(&gcm, ciphertext_len, iv, 12, aad, aad_len, tag, 16, ciphertext,
+                                   plaintext);
     if (ret != 0) {
         LOG_ERROR("GCM decrypt failed: %d", ret);
     }
@@ -431,12 +430,11 @@ int crypto_random_generate(uint8_t *buffer, size_t len)
     return CRYPTO_OK;
 }
 
-int crypto_ecdh_shared_secret(const uint8_t *private_key,
-                               const uint8_t *peer_public_key,
-                               uint8_t *shared_secret)
+int crypto_ecdh_shared_secret(const uint8_t *private_key, const uint8_t *peer_public_key,
+                              uint8_t *shared_secret)
 {
-    if (!crypto_ctx.initialized || private_key == NULL || 
-        peer_public_key == NULL || shared_secret == NULL) {
+    if (!crypto_ctx.initialized || private_key == NULL || peer_public_key == NULL ||
+        shared_secret == NULL) {
         return CRYPTO_ERROR_INVALID_PARAM;
     }
 
@@ -451,23 +449,29 @@ int crypto_ecdh_shared_secret(const uint8_t *private_key,
     mbedtls_ecp_point_init(&Q);
 
     int ret = mbedtls_ecp_group_load(&grp, MBEDTLS_ECP_DP_SECP256R1);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_mpi_read_binary(&d, private_key, 32);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_mpi_read_binary(&Q.X, &peer_public_key[0], 32);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_mpi_read_binary(&Q.Y, &peer_public_key[32], 32);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_mpi_lset(&Q.Z, 1);
-    if (ret != 0) goto cleanup;
+    if (ret != 0)
+        goto cleanup;
 
-    ret = mbedtls_ecdh_compute_shared(&grp, &z, &Q, &d,
-                                       mbedtls_ctr_drbg_random, &crypto_ctx.ctr_drbg);
-    if (ret != 0) goto cleanup;
+    ret = mbedtls_ecdh_compute_shared(&grp, &z, &Q, &d, mbedtls_ctr_drbg_random,
+                                      &crypto_ctx.ctr_drbg);
+    if (ret != 0)
+        goto cleanup;
 
     ret = mbedtls_mpi_write_binary(&z, shared_secret, 32);
 
@@ -483,10 +487,8 @@ cleanup:
 #endif
 }
 
-int crypto_hkdf_sha256(const uint8_t *salt, size_t salt_len,
-                       const uint8_t *ikm, size_t ikm_len,
-                       const uint8_t *info, size_t info_len,
-                       uint8_t *okm, size_t okm_len)
+int crypto_hkdf_sha256(const uint8_t *salt, size_t salt_len, const uint8_t *ikm, size_t ikm_len,
+                       const uint8_t *info, size_t info_len, uint8_t *okm, size_t okm_len)
 {
     if (!crypto_ctx.initialized || ikm == NULL || okm == NULL) {
         return CRYPTO_ERROR_INVALID_PARAM;
@@ -494,7 +496,7 @@ int crypto_hkdf_sha256(const uint8_t *salt, size_t salt_len,
 
 #ifdef USE_MBEDTLS
     const mbedtls_md_info_t *md = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-    
+
     int ret = mbedtls_hkdf(md, salt, salt_len, ikm, ikm_len, info, info_len, okm, okm_len);
     if (ret != 0) {
         LOG_ERROR("HKDF failed: %d", ret);

@@ -1,9 +1,9 @@
 /**
  * @file hal_nrf52.c
  * @brief Nordic nRF52 Hardware Abstraction Layer Implementation
- * 
+ *
  * Uses nRF5 SDK APIs for hardware access
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
@@ -13,24 +13,24 @@
 
 #ifdef NRF52
 
-#include "nrf.h"
-#include "nrf_gpio.h"
-#include "nrf_delay.h"
-#include "nrf_drv_rng.h"
-#include "nrf_nvmc.h"
-#include "nrf_drv_usbd.h"
+#include "app_timer.h"
 #include "app_usbd.h"
 #include "app_usbd_hid_generic.h"
-#include "app_timer.h"
+#include "nrf.h"
+#include "nrf_delay.h"
 #include "nrf_drv_clock.h"
+#include "nrf_drv_rng.h"
+#include "nrf_drv_usbd.h"
+#include "nrf_gpio.h"
+#include "nrf_nvmc.h"
 
 /* GPIO Configuration */
-#define BUTTON_PIN      13  /* Button 1 on nRF52840 DK */
-#define LED_PIN         13  /* LED 1 on nRF52840 DK */
+#define BUTTON_PIN 13 /* Button 1 on nRF52840 DK */
+#define LED_PIN 13    /* LED 1 on nRF52840 DK */
 
 /* Flash Configuration */
-#define FLASH_USER_START    0x70000
-#define FLASH_USER_SIZE     0x10000  /* 64KB */
+#define FLASH_USER_START 0x70000
+#define FLASH_USER_SIZE 0x10000 /* 64KB */
 
 /* Global state */
 static struct {
@@ -104,9 +104,7 @@ int hal_usb_init(void)
     LOG_INFO("Initializing USB HID");
 
     /* Initialize USB */
-    static const app_usbd_config_t usbd_config = {
-        .ev_state_proc = NULL
-    };
+    static const app_usbd_config_t usbd_config = {.ev_state_proc = NULL};
 
     ret_code_t ret = app_usbd_init(&usbd_config);
     if (ret != NRF_SUCCESS) {
@@ -133,7 +131,7 @@ int hal_usb_send(const uint8_t *data, size_t len)
 
     /* Send via USB HID (implementation depends on app_usbd_hid) */
     /* This is a simplified version */
-    
+
     return len;
 }
 
@@ -191,7 +189,7 @@ int hal_flash_read(uint32_t offset, uint8_t *data, size_t len)
         return HAL_ERROR;
     }
 
-    memcpy(data, (void *)address, len);
+    memcpy(data, (void *) address, len);
     return HAL_OK;
 }
 
@@ -257,7 +255,7 @@ int hal_random_generate(uint8_t *buffer, size_t len)
 
     while (offset < len) {
         nrf_drv_rng_bytes_available(&available);
-        
+
         if (available > 0) {
             size_t to_read = (len - offset < available) ? (len - offset) : available;
             ret_code_t ret = nrf_drv_rng_rand(&buffer[offset], to_read);
@@ -284,8 +282,7 @@ int hal_button_init(void)
 hal_button_state_t hal_button_get_state(void)
 {
     /* Button is active low */
-    return (nrf_gpio_pin_read(BUTTON_PIN) == 0) ?
-           HAL_BUTTON_PRESSED : HAL_BUTTON_RELEASED;
+    return (nrf_gpio_pin_read(BUTTON_PIN) == 0) ? HAL_BUTTON_PRESSED : HAL_BUTTON_RELEASED;
 }
 
 bool hal_button_wait_press(uint32_t timeout_ms)
@@ -321,9 +318,8 @@ int hal_led_init(void)
     nrf_gpio_pin_clear(LED_PIN);
 
     /* Create LED timer */
-    ret_code_t ret = app_timer_create(&hal_nrf52_state.led_timer,
-                                       APP_TIMER_MODE_REPEATED,
-                                       led_timer_handler);
+    ret_code_t ret =
+        app_timer_create(&hal_nrf52_state.led_timer, APP_TIMER_MODE_REPEATED, led_timer_handler);
     if (ret != NRF_SUCCESS) {
         return HAL_ERROR;
     }
@@ -358,8 +354,7 @@ int hal_crypto_sha256(const uint8_t *data, size_t len, uint8_t *hash)
     return HAL_ERROR_NOT_SUPPORTED;
 }
 
-int hal_crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash,
-                          uint8_t *signature)
+int hal_crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash, uint8_t *signature)
 {
     /* Use nRF Crypto library if available */
     return HAL_ERROR_NOT_SUPPORTED;
@@ -369,7 +364,7 @@ int hal_crypto_ecdsa_sign(const uint8_t *private_key, const uint8_t *hash,
 
 uint64_t hal_get_timestamp_ms(void)
 {
-    return app_timer_cnt_get() / 32.768;  /* Assuming 32.768 kHz clock */
+    return app_timer_cnt_get() / 32.768; /* Assuming 32.768 kHz clock */
 }
 
 void hal_delay_ms(uint32_t ms)
@@ -383,8 +378,8 @@ int hal_watchdog_init(uint32_t timeout_ms)
 {
     NRF_WDT->CONFIG = (WDT_CONFIG_SLEEP_Run << WDT_CONFIG_SLEEP_Pos) |
                       (WDT_CONFIG_HALT_Pause << WDT_CONFIG_HALT_Pos);
-    
-    NRF_WDT->CRV = (32768 * timeout_ms) / 1000;  /* 32.768 kHz clock */
+
+    NRF_WDT->CRV = (32768 * timeout_ms) / 1000; /* 32.768 kHz clock */
     NRF_WDT->RREN = WDT_RREN_RR0_Enabled << WDT_RREN_RR0_Pos;
     NRF_WDT->TASKS_START = 1;
 

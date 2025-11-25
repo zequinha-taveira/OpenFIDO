@@ -1,7 +1,7 @@
 /**
  * @file logger.h
  * @brief Logging Utilities
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
@@ -33,17 +33,29 @@ typedef enum {
 void logger_init(void);
 
 /* Logging macros */
-#define LOG_ERROR(fmt, ...) \
-    do { if (LOG_LEVEL >= LOG_LEVEL_ERROR) printf("[ERROR] " fmt "\n", ##__VA_ARGS__); } while(0)
+#define LOG_ERROR(fmt, ...)                             \
+    do {                                                \
+        if (LOG_LEVEL >= LOG_LEVEL_ERROR)               \
+            printf("[ERROR] " fmt "\n", ##__VA_ARGS__); \
+    } while (0)
 
-#define LOG_WARN(fmt, ...) \
-    do { if (LOG_LEVEL >= LOG_LEVEL_WARN) printf("[WARN]  " fmt "\n", ##__VA_ARGS__); } while(0)
+#define LOG_WARN(fmt, ...)                              \
+    do {                                                \
+        if (LOG_LEVEL >= LOG_LEVEL_WARN)                \
+            printf("[WARN]  " fmt "\n", ##__VA_ARGS__); \
+    } while (0)
 
-#define LOG_INFO(fmt, ...) \
-    do { if (LOG_LEVEL >= LOG_LEVEL_INFO) printf("[INFO]  " fmt "\n", ##__VA_ARGS__); } while(0)
+#define LOG_INFO(fmt, ...)                              \
+    do {                                                \
+        if (LOG_LEVEL >= LOG_LEVEL_INFO)                \
+            printf("[INFO]  " fmt "\n", ##__VA_ARGS__); \
+    } while (0)
 
-#define LOG_DEBUG(fmt, ...) \
-    do { if (LOG_LEVEL >= LOG_LEVEL_DEBUG) printf("[DEBUG] " fmt "\n", ##__VA_ARGS__); } while(0)
+#define LOG_DEBUG(fmt, ...)                             \
+    do {                                                \
+        if (LOG_LEVEL >= LOG_LEVEL_DEBUG)               \
+            printf("[DEBUG] " fmt "\n", ##__VA_ARGS__); \
+    } while (0)
 
 #ifdef __cplusplus
 }

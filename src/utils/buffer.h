@@ -1,7 +1,7 @@
 /**
  * @file buffer.h
  * @brief Safe Buffer Operations
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
@@ -9,8 +9,8 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +18,7 @@ extern "C" {
 
 /**
  * @brief Securely zero memory
- * 
+ *
  * @param ptr Pointer to memory
  * @param len Length to zero
  */
@@ -26,7 +26,7 @@ void secure_zero(void *ptr, size_t len);
 
 /**
  * @brief Constant-time memory comparison
- * 
+ *
  * @param a First buffer
  * @param b Second buffer
  * @param len Length to compare

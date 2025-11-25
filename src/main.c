@@ -1,25 +1,26 @@
 /**
  * @file main.c
  * @brief OpenFIDO Main Application Entry Point
- * 
+ *
  * @copyright Copyright (c) 2025 OpenFIDO Contributors
  * @license MIT License
  */
 
 #include <stdio.h>
 #include <string.h>
+
+#include "crypto.h"
 #include "ctap2.h"
 #include "hal.h"
-#include "crypto.h"
+#include "logger.h"
 #include "storage.h"
 #include "usb_hid.h"
-#include "logger.h"
 
 #define APP_VERSION "1.0.0"
 
 /**
  * @brief Initialize all subsystems
- * 
+ *
  * @return 0 on success, negative error code otherwise
  */
 static int init_subsystems(void)
@@ -94,10 +95,10 @@ static void main_loop(void)
 
         /* Wait for USB data */
         bytes_received = usb_hid_receive(rx_buffer, sizeof(rx_buffer));
-        
+
         if (bytes_received > 0) {
             LOG_DEBUG("Received %d bytes from USB", bytes_received);
-            
+
             /* Indicate activity */
             hal_led_set_state(HAL_LED_ON);
 
@@ -107,7 +108,7 @@ static void main_loop(void)
             request.data_len = bytes_received - 1;
 
             /* Prepare response buffer */
-            response.data = tx_buffer + 1;  /* Reserve first byte for status */
+            response.data = tx_buffer + 1; /* Reserve first byte for status */
             response.data_len = 0;
 
             /* Process CTAP2 request */
@@ -116,7 +117,7 @@ static void main_loop(void)
             /* Send response */
             tx_buffer[0] = response.status;
             int total_len = 1 + response.data_len;
-            
+
             usb_hid_send(tx_buffer, total_len);
             LOG_DEBUG("Sent %d bytes response (status: 0x%02X)", total_len, response.status);
 
