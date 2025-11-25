@@ -16,6 +16,8 @@
 #include "storage.h"
 #include "usb_hid.h"
 
+#include "config.h"
+
 #define APP_VERSION "1.0.0"
 
 /**
@@ -30,6 +32,7 @@ static int init_subsystems(void)
     /* Initialize logger */
     logger_init();
     LOG_INFO("OpenFIDO v%s starting...", APP_VERSION);
+    LOG_INFO("Device: %s %s", CONFIG_USB_MANUFACTURER, CONFIG_USB_PRODUCT);
 
     /* Initialize HAL */
     LOG_INFO("Initializing hardware abstraction layer...");
@@ -122,6 +125,9 @@ static void main_loop(void)
             LOG_DEBUG("Sent %d bytes response (status: 0x%02X)", total_len, response.status);
 
             /* Return to idle state */
+            /* Note: In a real implementation with non-blocking LED, we would use a timer here
+               to keep the LED on for CONFIG_LED_ACTIVITY_MS before returning to slow blink.
+               For now, we just switch back. */
             hal_led_set_state(HAL_LED_BLINK_SLOW);
         }
 
@@ -146,9 +152,9 @@ int main(void)
 
     /* Indicate ready */
     hal_led_set_state(HAL_LED_ON);
-    hal_delay_ms(500);
+    hal_delay_ms(CONFIG_LED_ACTIVITY_MS * 10);
     hal_led_set_state(HAL_LED_OFF);
-    hal_delay_ms(500);
+    hal_delay_ms(CONFIG_LED_ACTIVITY_MS * 10);
 
     /* Start main loop */
     main_loop();

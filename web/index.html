@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenFIDO Manager</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div class="app-container">
+        <header class="glass-panel">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M12 16V12" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path d="M12 8H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+                <h1>OpenFIDO</h1>
+            </div>
+            <div class="connection-status" id="connectionStatus">
+                <span class="status-dot"></span>
+                <span class="status-text">Disconnected</span>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero-section">
+                <h2>Manage your Security Key</h2>
+                <p>Connect your OpenFIDO device to configure settings and manage credentials.</p>
+                <button id="connectBtn" class="primary-btn">
+                    Connect Device
+                </button>
+            </section>
+
+            <div class="dashboard hidden" id="dashboard">
+                <div class="card glass-panel">
+                    <h3>Device Information</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Firmware Version</label>
+                            <span id="fwVersion">--</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Serial Number</label>
+                            <span id="serialNumber">--</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Protocol</label>
+                            <span>FIDO2 / CTAP2.1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card glass-panel">
+                    <h3>Security Settings</h3>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>PIN Protection</h4>
+                            <p>Require PIN for all operations</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="pinToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Reset Device</h4>
+                            <p>Erase all credentials and reset to factory defaults</p>
+                        </div>
+                        <button class="danger-btn" id="resetBtn">Reset</button>
+                    </div>
+                </div>
+
+                <div class="card glass-panel full-width">
+                    <h3>Firmware Update (DFU)</h3>
+                    <p class="description">Update your device firmware via Web Serial. Select a .bin or .hex file.</p>
+
+                    <div class="upload-container" id="uploadContainer">
+                        <input type="file" id="firmwareInput" accept=".bin,.hex" hidden>
+                        <label for="firmwareInput" class="upload-area">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 16V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                                <path d="M8 8L12 4L16 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                                <path d="M20 16V20H4V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                            </svg>
+                            <span id="fileName">Click to select firmware file</span>
+                        </label>
+                    </div>
+
+                    <div class="progress-container hidden" id="progressContainer">
+                        <div class="progress-info">
+                            <span id="progressStatus">Flashing...</span>
+                            <span id="progressPercent">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="primary-btn" id="flashBtn" disabled>Flash Firmware</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="glass-panel">
+            <p>&copy; 2025 OpenFIDO Community. Open Source Hardware & Software.</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
