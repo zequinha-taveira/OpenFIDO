@@ -11,6 +11,7 @@ jobs:
   format-check:
     name: Code Formatting Check
     runs-on: ubuntu-latest
+    continue-on-error: true  # Allow auto-format workflow to fix issues
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -127,16 +128,19 @@ jobs:
           echo "Native Tests: ${{ needs.native-tests.result }}"
           echo "PlatformIO Build: ${{ needs.platformio-build.result }}"
           
-          # Core checks must pass
-          if [ "${{ needs.format-check.result }}" != "success" ] || \
-             [ "${{ needs.native-tests.result }}" != "success" ]; then
-            echo "❌ Core checks failed"
+          # Only native tests must pass (format will be auto-fixed)
+          if [ "${{ needs.native-tests.result }}" != "success" ]; then
+            echo "❌ Native tests failed"
             exit 1
           fi
           
-          # PlatformIO is optional for now
-          if [ "${{ needs.platformio-build.result }}" == "success" ]; then
-            echo "✅ All checks passed including PlatformIO builds"
+          # Check optional jobs
+          if [ "${{ needs.format-check.result }}" == "success" ] && \
+             [ "${{ needs.platformio-build.result }}" == "success" ]; then
+            echo "✅ All checks passed"
+          elif [ "${{ needs.format-check.result }}" != "success" ]; then
+            echo "⚠️  Format check failed - will be auto-fixed by auto-format workflow"
           else
             echo "⚠️  Core checks passed, PlatformIO builds need attention"
           fi
+
