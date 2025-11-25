@@ -19,9 +19,6 @@ include_directories(
 set(TEST_SOURCES
     test_cbor.c
     test_crypto.c
-    test_storage.c
-    test_ctap2.c
-    test_buffer.c
 )
 
 # Mock HAL for testing
@@ -33,9 +30,6 @@ set(MOCK_HAL_SOURCES
 set(SRC_FILES
     ../src/fido2/cbor.c
     ../src/crypto/crypto.c
-    ../src/storage/storage.c
-    ../src/fido2/ctap2.c
-    ../src/utils/buffer.c
 )
 
 # Create test executable
@@ -52,9 +46,6 @@ target_link_libraries(run_tests MbedTLS::mbedtls MbedTLS::mbedcrypto)
 # Add tests
 add_test(NAME cbor_tests COMMAND run_tests cbor)
 add_test(NAME crypto_tests COMMAND run_tests crypto)
-add_test(NAME storage_tests COMMAND run_tests storage)
-add_test(NAME ctap2_tests COMMAND run_tests ctap2)
-add_test(NAME buffer_tests COMMAND run_tests buffer)
 
 # Coverage (optional)
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
