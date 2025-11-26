@@ -441,12 +441,11 @@ void crypto_secure_zero(void *ptr, size_t len)
      * This is critical for security - we MUST ensure sensitive data is wiped
      * from memory, even if the compiler thinks it's "dead code". */
     volatile uint8_t *volatile p = (volatile uint8_t *) ptr;
-    
+
     while (len--) {
         *p++ = 0;
     }
 }
-
 
 int crypto_ecdh_shared_secret(const uint8_t *private_key, const uint8_t *peer_public_key,
                               uint8_t *shared_secret)

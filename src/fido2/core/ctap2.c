@@ -134,7 +134,7 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
 static bool is_weak_pin(const uint8_t *pin, size_t pin_len)
 {
     if (pin == NULL || pin_len < 4) {
-        return true;  /* Too short = weak */
+        return true; /* Too short = weak */
     }
 
     /* Check for sequential digits (e.g., "1234") */
@@ -225,7 +225,6 @@ uint8_t ctap2_process_request(const ctap2_request_t *request, ctap2_response_t *
             return CTAP2_ERR_INVALID_COMMAND;
     }
 }
-
 
 /**
  * @brief Handle the authenticatorGetInfo command.
@@ -343,29 +342,29 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
                 break;
             case CP_KEY_NEW_PIN_ENC: {
                 size_t actual_len = sizeof(new_pin_enc);
-                
+
                 /* Decode and capture actual length */
                 int decode_result = cbor_decode_bytes(&decoder, new_pin_enc, &actual_len);
-                
+
                 if (decode_result != CBOR_OK) {
                     crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
                     return CTAP2_ERR_INVALID_CBOR;
                 }
-                
+
                 /* Validate actual decoded length */
                 if (actual_len == 0) {
                     crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
                     LOG_WARN("Empty PIN encrypted data received");
                     return CTAP2_ERR_PIN_POLICY_VIOLATION;
                 }
-                
+
                 if (actual_len > sizeof(new_pin_enc)) {
                     crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
-                    LOG_WARN("PIN encrypted data exceeds maximum size: %zu > %zu",
-                             actual_len, sizeof(new_pin_enc));
+                    LOG_WARN("PIN encrypted data exceeds maximum size: %zu > %zu", actual_len,
+                             sizeof(new_pin_enc));
                     return CTAP2_ERR_INVALID_LENGTH;
                 }
-                
+
                 new_pin_enc_len = actual_len;
                 break;
             }
@@ -395,7 +394,7 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
             /* Generate ephemeral ECDH key pair */
             uint8_t private_key[32];
             uint8_t public_key[64];
-            
+
             if (crypto_ecdsa_generate_keypair(private_key, public_key) != CRYPTO_OK) {
                 crypto_secure_zero(private_key, sizeof(private_key));
                 return CTAP2_ERR_PROCESSING;
@@ -418,10 +417,10 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
             cbor_encode_bytes(&encoder, &public_key[32], 32);
 
             *response_len = cbor_encoder_get_size(&encoder);
-            
+
             /* CRITICAL: Securely wipe private key before returning */
             crypto_secure_zero(private_key, sizeof(private_key));
-            
+
             LOG_INFO("ClientPIN: GetKeyAgreement");
             return CTAP2_OK;
         }
@@ -557,10 +556,10 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
             cbor_encode_bytes(&encoder, pin_token, sizeof(pin_token));
 
             *response_len = cbor_encoder_get_size(&encoder);
-            
+
             /* CRITICAL: Securely wipe PIN token after encoding */
             crypto_secure_zero(pin_token, sizeof(pin_token));
-            
+
             LOG_INFO("ClientPIN: GetPINToken");
             return CTAP2_OK;
         }
