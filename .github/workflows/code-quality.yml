@@ -1,0 +1,208 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # Static analysis with cppcheck
+  cppcheck:
+    name: Cppcheck Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=all \
+            --inconclusive \
+            --std=c11 \
+            --suppress=missingIncludeSystem \
+            --suppress=unmatchedSuppression \
+            --inline-suppr \
+            --xml \
+            --xml-version=2 \
+            -I src/fido2 -I src/crypto -I src/storage -I src/hal -I src/utils -I src/common \
+            src/ 2> cppcheck-report.xml || true
+
+      - name: Generate cppcheck HTML report
+        run: |
+          sudo apt-get install -y python3-pip
+          pip3 install cppcheck-htmlreport
+          cppcheck-htmlreport --file=cppcheck-report.xml --report-dir=cppcheck-html --source-dir=.
+
+      - name: Upload cppcheck results
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppcheck-report
+          path: |
+            cppcheck-report.xml
+            cppcheck-html/
+          retention-days: 30
+
+      - name: Check for critical issues
+        run: |
+          if grep -q 'severity="error"' cppcheck-report.xml; then
+            echo "❌ Critical issues found by cppcheck"
+            grep 'severity="error"' cppcheck-report.xml || true
+            echo "Please review the cppcheck report"
+          else
+            echo "✅ No critical issues found"
+          fi
+
+  # Linting with clang-tidy
+  clang-tidy:
+    name: Clang-Tidy Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install clang-tidy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tidy build-essential libmbedtls-dev cmake
+
+      - name: Configure build
+        run: |
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+
+      - name: Run clang-tidy
+        run: |
+          # Run clang-tidy on source files
+          find src -name '*.c' | while read file; do
+            echo "Analyzing $file..."
+            clang-tidy "$file" \
+              -p build \
+              --config-file=.clang-tidy \
+              2>&1 | tee -a clang-tidy-report.txt || true
+          done
+
+      - name: Upload clang-tidy results
+        uses: actions/upload-artifact@v4
+        with:
+          name: clang-tidy-report
+          path: clang-tidy-report.txt
+          retention-days: 30
+
+  # Complexity analysis
+  complexity:
+    name: Code Complexity Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install lizard
+        run: |
+          pip3 install lizard
+
+      - name: Run complexity analysis
+        run: |
+          lizard -l c src/ -o complexity-report.html
+          lizard -l c src/ > complexity-report.txt
+
+      - name: Check complexity thresholds
+        run: |
+          # Check for functions with complexity > 15
+          if grep -E "CCN: [2-9][0-9]|CCN: 1[6-9]" complexity-report.txt; then
+            echo "⚠️  High complexity functions detected"
+            echo "Consider refactoring functions with CCN > 15"
+          else
+            echo "✅ All functions have acceptable complexity"
+          fi
+
+      - name: Upload complexity report
+        uses: actions/upload-artifact@v4
+        with:
+          name: complexity-report
+          path: |
+            complexity-report.html
+            complexity-report.txt
+          retention-days: 30
+
+  # Duplicate code detection
+  duplicate-detection:
+    name: Duplicate Code Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install PMD CPD
+        run: |
+          wget https://github.com/pmd/pmd/releases/download/pmd_releases%2F7.0.0/pmd-bin-7.0.0.zip
+          unzip -q pmd-bin-7.0.0.zip
+          sudo mv pmd-bin-7.0.0 /opt/pmd
+
+      - name: Run duplicate detection
+        run: |
+          /opt/pmd/bin/pmd cpd --minimum-tokens 50 --language c --dir src/ --format text > duplication-report.txt || true
+          /opt/pmd/bin/pmd cpd --minimum-tokens 50 --language c --dir src/ --format xml > duplication-report.xml || true
+
+      - name: Check for duplicates
+        run: |
+          if grep -q "Found" duplication-report.txt; then
+            echo "⚠️  Code duplication detected"
+            cat duplication-report.txt
+          else
+            echo "✅ No significant code duplication found"
+          fi
+
+      - name: Upload duplication report
+        uses: actions/upload-artifact@v4
+        with:
+          name: duplication-report
+          path: |
+            duplication-report.txt
+            duplication-report.xml
+          retention-days: 30
+
+  # Quality summary
+  quality-summary:
+    name: Code Quality Summary
+    runs-on: ubuntu-latest
+    needs: [cppcheck, clang-tidy, complexity, duplicate-detection]
+    if: always()
+    steps:
+      - name: Create quality summary
+        run: |
+          echo "## 🎯 Code Quality Summary" > quality-summary.md
+          echo "" >> quality-summary.md
+          echo "### Analysis Results" >> quality-summary.md
+          echo "- **Cppcheck**: ${{ needs.cppcheck.result }}" >> quality-summary.md
+          echo "- **Clang-Tidy**: ${{ needs.clang-tidy.result }}" >> quality-summary.md
+          echo "- **Complexity**: ${{ needs.complexity.result }}" >> quality-summary.md
+          echo "- **Duplication**: ${{ needs.duplicate-detection.result }}" >> quality-summary.md
+          echo "" >> quality-summary.md
+          
+          if [ "${{ needs.cppcheck.result }}" == "success" ] && \
+             [ "${{ needs.clang-tidy.result }}" == "success" ] && \
+             [ "${{ needs.complexity.result }}" == "success" ] && \
+             [ "${{ needs.duplicate-detection.result }}" == "success" ]; then
+            echo "✅ All quality checks passed!" >> quality-summary.md
+          else
+            echo "⚠️  Some quality checks need attention" >> quality-summary.md
+          fi
+          
+          cat quality-summary.md
+
+      - name: Upload summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-summary
+          path: quality-summary.md

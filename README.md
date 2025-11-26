@@ -1,9 +1,14 @@
 # OpenFIDO - Open-Source FIDO2 Security Key
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/yourusername/OpenFIDO/workflows/CI/badge.svg)](https://github.com/yourusername/OpenFIDO/actions)
+[![CI](https://github.com/yourusername/OpenFIDO/workflows/CI/badge.svg)](https://github.com/yourusername/OpenFIDO/actions/workflows/ci.yml)
+[![Security Scan](https://github.com/yourusername/OpenFIDO/workflows/Security%20Scan/badge.svg)](https://github.com/yourusername/OpenFIDO/actions/workflows/security-scan.yml)
+[![Code Coverage](https://codecov.io/gh/yourusername/OpenFIDO/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/OpenFIDO)
+[![Code Quality](https://github.com/yourusername/OpenFIDO/workflows/Code%20Quality/badge.svg)](https://github.com/yourusername/OpenFIDO/actions/workflows/code-quality.yml)
+[![Documentation](https://github.com/yourusername/OpenFIDO/workflows/Documentation/badge.svg)](https://yourusername.github.io/OpenFIDO/)
 [![Platform](https://img.shields.io/badge/Platform-ESP32%20%7C%20STM32%20%7C%20nRF52-blue.svg)]()
 [![FIDO2](https://img.shields.io/badge/FIDO2-CTAP2.0-green.svg)]()
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://github.com/yourusername/OpenFIDO/pkgs/container/openfido)
 
 **OpenFIDO** is a professional, production-ready FIDO2 USB security key implementation written in C from scratch. Designed for open-source contribution, it supports multiple hardware platforms through a hardware abstraction layer (HAL).
 

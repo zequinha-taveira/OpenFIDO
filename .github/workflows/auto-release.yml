@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
 
 permissions:
   contents: write
@@ -14,13 +19,45 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.version.outputs.VERSION }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for changelog
 
       - name: Extract version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Releasing version: $VERSION"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get previous tag
+          PREV_TAG=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            echo "First release"
+            CHANGELOG="Initial release of OpenFIDO"
+          else
+            echo "Generating changelog from $PREV_TAG to ${{ steps.version.outputs.VERSION }}"
+            CHANGELOG=$(git log $PREV_TAG..${{ steps.version.outputs.VERSION }} --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          # Save changelog to file
+          echo "$CHANGELOG" > CHANGELOG.txt
+          
+          # Also check if CHANGELOG.md exists
+          if [ -f "CHANGELOG.md" ]; then
+            cat CHANGELOG.md >> CHANGELOG.txt
+          fi
 
       - name: Create Release
         id: create_release
@@ -28,24 +65,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
+          tag_name: ${{ steps.version.outputs.VERSION }}
           release_name: OpenFIDO ${{ steps.version.outputs.VERSION }}
-          body: |
-            ## OpenFIDO Release ${{ steps.version.outputs.VERSION }}
-            
-            ### 🎉 What's New
-            See the [CHANGELOG](CHANGELOG.md) for details.
-            
-            ### 📦 Downloads
-            Firmware binaries for all supported platforms are attached below.
-            
-            ### 🔧 Supported Platforms
-            - ESP32-S3
-            - ESP32-S2
-            - STM32F4
-            - nRF52840
+          body_path: CHANGELOG.txt
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, 'beta') || contains(steps.version.outputs.VERSION, 'alpha') }}
 
   build-release-firmware:
     name: Build Release Firmware - ${{ matrix.environment }}
@@ -84,16 +108,20 @@ jobs:
         run: |
           pio run -e ${{ matrix.environment }}
 
-      - name: Extract version
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
       - name: Prepare firmware package
         run: |
           mkdir -p release
+          VERSION="${{ needs.create-release.outputs.version }}"
+          
+          # Copy firmware files
           cp .pio/build/${{ matrix.environment }}/firmware.* release/ 2>/dev/null || true
+          
+          # Generate checksums
           cd release
-          tar -czf openfido-${{ steps.version.outputs.VERSION }}-${{ matrix.environment }}.tar.gz firmware.*
+          sha256sum firmware.* > checksums.txt 2>/dev/null || true
+          
+          # Create tarball
+          tar -czf openfido-${VERSION}-${{ matrix.environment }}.tar.gz firmware.* checksums.txt
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
@@ -101,6 +129,35 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: release/openfido-${{ steps.version.outputs.VERSION }}-${{ matrix.environment }}.tar.gz
-          asset_name: openfido-${{ steps.version.outputs.VERSION }}-${{ matrix.environment }}.tar.gz
+          asset_path: release/openfido-${{ needs.create-release.outputs.version }}-${{ matrix.environment }}.tar.gz
+          asset_name: openfido-${{ needs.create-release.outputs.version }}-${{ matrix.environment }}.tar.gz
           asset_content_type: application/gzip
+
+      - name: Upload checksums
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: release/checksums.txt
+          asset_name: openfido-${{ needs.create-release.outputs.version }}-${{ matrix.environment }}-checksums.txt
+          asset_content_type: text/plain
+
+  release-summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    needs: [create-release, build-release-firmware]
+    if: always()
+    steps:
+      - name: Create summary
+        run: |
+          echo "## 🎉 Release ${{ needs.create-release.outputs.version }} Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- ESP32-S3 firmware" >> $GITHUB_STEP_SUMMARY
+          echo "- ESP32-S2 firmware" >> $GITHUB_STEP_SUMMARY
+          echo "- STM32F4 firmware" >> $GITHUB_STEP_SUMMARY
+          echo "- nRF52840 firmware" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All firmware packages include SHA256 checksums for verification." >> $GITHUB_STEP_SUMMARY
+

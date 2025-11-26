@@ -6,119 +6,86 @@ This document describes the automated workflows configured for the OpenFIDO proj
 
 OpenFIDO uses GitHub Actions for complete CI/CD automation. All workflows run automatically without manual intervention.
 
+For detailed CI pipeline architecture, see [CI.md](CI.md).
+
 ## Automated Workflows
 
-### 1. CI Workflow (`ci.yml`)
+### 1. Core CI & Build (`ci.yml`, `build.yml`)
 
 **Triggers**: Push and PR to `main` or `develop`
 
 **What it does**:
 - ✅ Validates code formatting
-- ✅ Builds and tests natively
-- ✅ Builds firmware for all platforms
+- ✅ Builds and tests natively (GCC & Clang)
+- ✅ Builds firmware for all platforms (ESP32, STM32, nRF52)
+- ✅ Tracks binary size
 - ✅ Uploads artifacts
 
-**Fully automatic** - no manual steps required.
+### 2. Security & Quality (`security-scan.yml`, `code-quality.yml`)
 
----
-
-### 2. Auto-Format (`auto-format.yml`)
-
-**Triggers**: Push to `main` or `develop` (when `.c` or `.h` files change)
+**Triggers**: Push/PR to `main`/`develop`, Weekly Schedule
 
 **What it does**:
-- 🤖 Automatically formats all C code with `clang-format`
-- 🤖 Commits changes back to the repository
-- 🤖 No manual formatting needed!
+- 🔒 Scans for vulnerabilities (CodeQL, Trivy)
+- 🔒 Detects secrets (Gitleaks)
+- 🔍 Analyzes code quality (Cppcheck, Clang-Tidy)
+- 📊 Checks code complexity and duplication
 
-**How it works**:
-1. Detects code changes
-2. Runs `clang-format` on all files
-3. Commits formatted code automatically
-4. Pushes back to the same branch
+### 3. Code Coverage (`coverage.yml`)
 
----
+**Triggers**: Push/PR to `main`/`develop`
 
-### 3. Auto-Release (`auto-release.yml`)
+**What it does**:
+- 📈 Measures test coverage
+- 📝 Generates HTML reports
+- 💬 Comments on PRs with coverage stats
+
+### 4. Auto-Release (`auto-release.yml`)
 
 **Triggers**: Push tags matching `v*.*.*` (e.g., `v1.0.0`)
 
 **What it does**:
 - 🚀 Creates GitHub release automatically
-- 🚀 Builds firmware for all platforms
-- 🚀 Attaches firmware binaries to release
-- 🚀 Generates release notes
+- 📦 Packages firmware with checksums
+- 📝 Generates changelog from git history
 
-**How to use**:
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
+### 5. Documentation & Web (`pages-deploy.yml`)
 
-The workflow will automatically:
-1. Create a release on GitHub
-2. Build firmware for ESP32-S3, ESP32-S2, STM32F4, nRF52840
-3. Package and upload binaries
-4. Publish the release
-
----
-
-### 4. PR Comment (`pr-comment.yml`)
-
-**Triggers**: Pull request opened or updated
+**Triggers**: Push to `main`
 
 **What it does**:
-- 💬 Posts build status comment on PRs
-- 💬 Updates comment as builds complete
-- 💬 Shows status for each platform
-- 💬 Links to detailed results
+- 📚 Generates Doxygen docs
+- 🌐 Builds Web Flasher tool
+- 🚀 Deploys both to GitHub Pages (docs in `/docs`, flasher in `/flasher`)
 
-**Example comment**:
-```
-## 🤖 CI Build Status
+### 6. Containers (`container.yml`)
 
-### Code Quality
-✅ Format Check: success
-
-### Tests
-✅ Native Tests: success
-
-### Platform Builds
-✅ esp32s3: success
-✅ esp32s2: success
-✅ stm32f4: success
-✅ nrf52840: success
-
----
-📊 View detailed results
-```
-
----
-
-### 5. Scheduled Build (`scheduled.yml`)
-
-**Triggers**: 
-- Every Monday at 00:00 UTC (automatic)
-- Manual trigger via GitHub UI
+**Triggers**: Push to `main`, Tags
 
 **What it does**:
-- 📅 Runs weekly build to catch issues early
-- 📅 Checks for dependency updates
-- 📅 Creates issues for available updates
+- 🐳 Builds multi-platform Docker images
+- 📤 Pushes to GitHub Container Registry
 
-**Benefits**:
-- Ensures code still builds with latest dependencies
-- Proactive dependency management
-- Early detection of breaking changes
+### 7. Benchmarks (`benchmarks.yml`)
+
+**Triggers**: Push/PR to `main`/`develop`
+
+**What it does**:
+- ⚡ Measures crypto and protocol performance
+- ⚠️ Alerts on performance regressions
 
 ---
+
+## Manual Triggers
+
+Most workflows support manual triggering via the "Actions" tab in GitHub:
+1. Go to Actions tab
+2. Select the workflow
+3. Click "Run workflow"
 
 ## Permissions
 
-All workflows use minimal required permissions:
-- `contents: write` - For auto-format commits and releases
-- `pull-requests: write` - For PR comments
-- `contents: read` - For reading repository
+All workflows use minimal required permissions following security best practices.
 
 ## Workflow Status
 
@@ -126,66 +93,3 @@ View all workflow runs at:
 ```
 https://github.com/yourusername/OpenFIDO/actions
 ```
-
-## Manual Triggers
-
-Some workflows support manual triggering:
-
-**Scheduled Build**:
-1. Go to Actions tab
-2. Select "Scheduled Build"
-3. Click "Run workflow"
-
-## Disabling Workflows
-
-To disable a workflow temporarily, add this to the workflow file:
-```yaml
-on:
-  workflow_dispatch: # Manual only
-```
-
-Or delete the workflow file from `.github/workflows/`.
-
-## Customization
-
-### Change Auto-Format Trigger
-
-Edit `.github/workflows/auto-format.yml`:
-```yaml
-on:
-  push:
-    branches: [ develop ] # Only on develop
-```
-
-### Change Schedule
-
-Edit `.github/workflows/scheduled.yml`:
-```yaml
-schedule:
-  - cron: '0 0 * * *' # Daily instead of weekly
-```
-
-### Modify Release Template
-
-Edit `.github/workflows/auto-release.yml` release body section.
-
-## Troubleshooting
-
-**Auto-format not committing**:
-- Check repository permissions
-- Ensure `GITHUB_TOKEN` has write access
-
-**Release not creating**:
-- Verify tag format matches `v*.*.*`
-- Check workflow permissions
-
-**PR comments not appearing**:
-- Ensure `pull-requests: write` permission is set
-- Check if bot comments are enabled
-
-## Best Practices
-
-1. **Always use semantic versioning** for releases (`v1.2.3`)
-2. **Review auto-formatted changes** in the commit history
-3. **Monitor scheduled build results** weekly
-4. **Keep workflows updated** with latest action versions

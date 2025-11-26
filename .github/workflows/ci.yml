@@ -5,6 +5,7 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
 
 jobs:
   # Code formatting check
@@ -31,13 +32,40 @@ jobs:
           echo "$FILES"
           echo "$FILES" | xargs clang-format --dry-run --Werror
 
-  # Native build and tests
+  # Native build and tests with multiple compilers
   native-tests:
-    name: Native Build & Tests
+    name: Build & Test - ${{ matrix.compiler }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        mbedtls_version: ['3.5.0']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup compiler
+        run: |
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            sudo apt-get update
+            sudo apt-get install -y clang
+            echo "CC=clang" >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
+          else
+            echo "CC=gcc" >> $GITHUB_ENV
+            echo "CXX=g++" >> $GITHUB_ENV
+          fi
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/apt
+            build/_deps
+          key: ${{ runner.os }}-${{ matrix.compiler }}-deps-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.compiler }}-deps-
 
       - name: Install dependencies
         run: |
@@ -48,12 +76,15 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug ..
+          cmake -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_C_COMPILER=$CC \
+                -DCMAKE_CXX_COMPILER=$CXX \
+                ..
 
       - name: Build
         run: |
           cd build
-          make -j$(nproc)
+          make -j$(nproc) VERBOSE=1
 
       - name: Run tests
         run: |
@@ -64,8 +95,17 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ matrix.compiler }}
           path: build/Testing/
+          retention-days: 7
+
+      - name: Check binary size
+        run: |
+          if [ -f build/openfido ]; then
+            SIZE=$(stat -c%s build/openfido)
+            echo "Binary size: $SIZE bytes"
+            echo "Binary size: $(numfmt --to=iec-i --suffix=B $SIZE)"
+          fi
 
   # PlatformIO builds for embedded platforms
   platformio-build:
@@ -99,15 +139,26 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install PlatformIO
         run: |
           python -m pip install --upgrade pip
           pip install platformio
 
+      - name: Check PlatformIO version
+        run: pio --version
+
       - name: Build firmware
         run: |
           pio run -e ${{ matrix.environment }} || echo "Build failed - project structure needs adjustment"
+
+      - name: Get firmware size
+        if: success()
+        run: |
+          if [ -f .pio/build/${{ matrix.environment }}/firmware.elf ]; then
+            size .pio/build/${{ matrix.environment }}/firmware.elf
+          fi
 
       - name: Upload firmware
         if: success()
@@ -126,23 +177,27 @@ jobs:
     steps:
       - name: Check build status
         run: |
-          echo "Format Check: ${{ needs.format-check.result }}"
-          echo "Native Tests: ${{ needs.native-tests.result }}"
-          echo "PlatformIO Build: ${{ needs.platformio-build.result }}"
+          echo "## 📊 CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Format Check**: ${{ needs.format-check.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Native Tests**: ${{ needs.native-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **PlatformIO Build**: ${{ needs.platformio-build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           
           # Only native tests must pass (format will be auto-fixed)
           if [ "${{ needs.native-tests.result }}" != "success" ]; then
-            echo "❌ Native tests failed"
+            echo "❌ Native tests failed" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
           
           # Check optional jobs
           if [ "${{ needs.format-check.result }}" == "success" ] && \
              [ "${{ needs.platformio-build.result }}" == "success" ]; then
-            echo "✅ All checks passed"
+            echo "✅ All checks passed" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ needs.format-check.result }}" != "success" ]; then
-            echo "⚠️  Format check failed - will be auto-fixed by auto-format workflow"
+            echo "⚠️  Format check failed - will be auto-fixed by auto-format workflow" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️  Core checks passed, PlatformIO builds need attention"
+            echo "⚠️  Core checks passed, PlatformIO builds need attention" >> $GITHUB_STEP_SUMMARY
           fi
 

@@ -1,0 +1,136 @@
+name: Deploy to Pages
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'docs/**'
+      - 'web/**'
+      - 'Doxyfile'
+      - '.github/workflows/pages-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Doxygen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Generate documentation
+        run: |
+          doxygen Doxyfile
+
+      - name: Upload docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-build
+          path: docs/html/
+          retention-days: 1
+
+  build-flasher:
+    name: Build Web Flasher
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd web
+          npm ci || npm install
+
+      - name: Build application
+        run: |
+          cd web
+          if grep -q '"build"' package.json 2>/dev/null; then
+            npm run build
+            if [ -d "dist" ]; then
+              cp -r dist ../web-flasher-build
+            elif [ -d "build" ]; then
+              cp -r build ../web-flasher-build
+            fi
+          else
+            mkdir -p ../web-flasher-build
+            cp *.html *.css *.js ../web-flasher-build/ 2>/dev/null || true
+          fi
+
+      - name: Upload flasher artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flasher-build
+          path: web-flasher-build/
+          retention-days: 1
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: [build-docs, build-flasher]
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download docs
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-build
+          path: site/docs
+
+      - name: Download flasher
+        uses: actions/download-artifact@v4
+        with:
+          name: flasher-build
+          path: site/flasher
+
+      - name: Create index page
+        run: |
+          echo '<!DOCTYPE html>' > site/index.html
+          echo '<html><head><title>OpenFIDO</title>' >> site/index.html
+          echo '<meta name="viewport" content="width=device-width, initial-scale=1">' >> site/index.html
+          echo '<style>body{font-family:system-ui,sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem;line-height:1.5}a{color:#0969da;text-decoration:none}a:hover{text-decoration:underline}.card{border:1px solid #d0d7de;border-radius:6px;padding:1rem;margin:1rem 0;display:block;color:inherit;transition:0.2s}.card:hover{background:#f6f8fa;box-shadow:0 1px 3px rgba(0,0,0,0.1)}h2{margin-top:0}</style>' >> site/index.html
+          echo '</head><body>' >> site/index.html
+          echo '<h1>OpenFIDO Project</h1>' >> site/index.html
+          echo '<p>Welcome to the OpenFIDO project pages.</p>' >> site/index.html
+          echo '<a href="flasher/" class="card"><h2>🚀 Web Flasher</h2><p>Flash firmware to your device directly from the browser.</p></a>' >> site/index.html
+          echo '<a href="docs/" class="card"><h2>📚 Documentation</h2><p>Technical documentation and API reference.</p></a>' >> site/index.html
+          echo '<a href="https://github.com/${{ github.repository }}" class="card"><h2>💻 GitHub Repository</h2><p>View source code and contribute.</p></a>' >> site/index.html
+          echo '</body></html>' >> site/index.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Create deployment summary
+        run: |
+          echo "## 🚀 Pages Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Site deployed to: ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- [Web Flasher](${{ steps.deployment.outputs.page_url }}flasher/)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Documentation](${{ steps.deployment.outputs.page_url }}docs/)" >> $GITHUB_STEP_SUMMARY

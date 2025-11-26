@@ -1,53 +1,86 @@
-name: Build and Test
+name: Build Validation
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
 
 jobs:
-  build:
+  validate-build:
+    name: Validate Build
     runs-on: ubuntu-latest
-    
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential libmbedtls-dev
+        sudo apt-get install -y build-essential libmbedtls-dev gcc clang
     
     - name: Create build directory
       run: mkdir -p build
     
-    - name: Compile crypto.c
+    - name: Compile crypto.c with GCC
       run: |
         gcc -c -Wall -Wextra -Werror -pedantic -std=c11 \
           -I src/utils -I src/hal -I src/common \
           -DUSE_MBEDTLS \
-          -o build/crypto.o \
+          -o build/crypto_gcc.o \
           src/crypto/crypto.c
     
-    - name: Compile ctap2.c
+    - name: Compile crypto.c with Clang
+      run: |
+        clang -c -Wall -Wextra -Werror -pedantic -std=c11 \
+          -I src/utils -I src/hal -I src/common \
+          -DUSE_MBEDTLS \
+          -o build/crypto_clang.o \
+          src/crypto/crypto.c
+    
+    - name: Compile ctap2.c with GCC
       run: |
         gcc -c -Wall -Wextra -Werror -pedantic -std=c11 \
           -I src/crypto -I src/storage -I src/utils \
           -I src/hal -I src/common -I src/fido2/core \
           -DUSE_MBEDTLS \
-          -o build/ctap2.o \
+          -o build/ctap2_gcc.o \
+          src/fido2/core/ctap2.c
+    
+    - name: Compile ctap2.c with Clang
+      run: |
+        clang -c -Wall -Wextra -Werror -pedantic -std=c11 \
+          -I src/crypto -I src/storage -I src/utils \
+          -I src/hal -I src/common -I src/fido2/core \
+          -DUSE_MBEDTLS \
+          -o build/ctap2_clang.o \
           src/fido2/core/ctap2.c
     
     - name: Verify build artifacts
       run: |
-        ls -lh build/
-        file build/crypto.o
-        file build/ctap2.o
+        echo "## 🔨 Build Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| File | Compiler | Size |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|----------|------|" >> $GITHUB_STEP_SUMMARY
+        
+        for file in build/*.o; do
+          if [ -f "$file" ]; then
+            SIZE=$(stat -c%s "$file")
+            COMPILER=$(echo "$file" | grep -o "gcc\|clang")
+            echo "| $(basename "$file") | $COMPILER | $SIZE bytes |" >> $GITHUB_STEP_SUMMARY
+            file "$file"
+          fi
+        done
     
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: compiled-objects
         path: build/*.o
         retention-days: 7
+    
+    - name: Build summary
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ All object files compiled successfully with both GCC and Clang" >> $GITHUB_STEP_SUMMARY
