@@ -22,6 +22,8 @@ include_directories(
 set(TEST_SOURCES
     test_cbor.c
     test_crypto.c
+    test_extensions.c
+    test_u2f.c
 )
 
 # Mock HAL for testing
@@ -32,7 +34,11 @@ set(MOCK_HAL_SOURCES
 # Source files to test
 set(SRC_FILES
     ../src/fido2/cbor.c
+    ../src/fido2/ctap2.c
+    ../src/fido2/u2f.c
     ../src/crypto/crypto.c
+    ../src/storage/storage.c
+    ../src/utils/logger.c
 )
 
 # Create test executable
@@ -50,6 +56,8 @@ target_compile_definitions(run_tests PRIVATE USE_MBEDTLS)
 # Add tests
 add_test(NAME cbor_tests COMMAND run_tests cbor)
 add_test(NAME crypto_tests COMMAND run_tests crypto)
+add_test(NAME extension_tests COMMAND run_tests extensions)
+add_test(NAME u2f_tests COMMAND run_tests u2f)
 
 # Coverage (optional)
 option(ENABLE_COVERAGE "Enable code coverage" OFF)

@@ -12,6 +12,7 @@
 #include "config.h"
 #include "crypto.h"
 #include "ctap2.h"
+#include "u2f.h"
 #include "hal.h"
 #include "logger.h"
 #include "storage.h"
@@ -96,32 +97,52 @@ static void main_loop(void)
         hal_watchdog_feed();
 
         /* Wait for USB data */
-        bytes_received = usb_hid_receive(rx_buffer, sizeof(rx_buffer));
+        uint8_t cmd = 0;
+        bytes_received = usb_hid_receive(rx_buffer, sizeof(rx_buffer), &cmd);
 
         if (bytes_received > 0) {
-            LOG_DEBUG("Received %d bytes from USB", bytes_received);
+            LOG_DEBUG("Received %d bytes from USB (CMD: 0x%02X)", bytes_received, cmd);
 
             /* Indicate activity */
             hal_led_set_state(HAL_LED_ON);
 
-            /* Parse CTAP2 request */
-            request.cmd = rx_buffer[0];
-            request.data = &rx_buffer[1];
-            request.data_len = bytes_received - 1;
+            if (cmd == CTAPHID_CBOR) {
+                /* Parse CTAP2 request */
+                request.cmd = rx_buffer[0];
+                request.data = &rx_buffer[1];
+                request.data_len = bytes_received - 1;
 
-            /* Prepare response buffer */
-            response.data = tx_buffer + 1; /* Reserve first byte for status */
-            response.data_len = 0;
+                /* Prepare response buffer */
+                response.data = tx_buffer + 1; /* Reserve first byte for status */
+                response.data_len = 0;
 
-            /* Process CTAP2 request */
-            response.status = ctap2_process_request(&request, &response);
+                /* Process CTAP2 request */
+                response.status = ctap2_process_request(&request, &response);
 
-            /* Send response */
-            tx_buffer[0] = response.status;
-            int total_len = 1 + response.data_len;
+                /* Send response */
+                tx_buffer[0] = response.status;
+                int total_len = 1 + response.data_len;
 
-            usb_hid_send(tx_buffer, total_len);
-            LOG_DEBUG("Sent %d bytes response (status: 0x%02X)", total_len, response.status);
+                usb_hid_send(tx_buffer, total_len);
+                LOG_DEBUG("Sent %d bytes response (status: 0x%02X)", total_len, response.status);
+            } else if (cmd == CTAPHID_MSG) {
+                /* Process U2F APDU */
+                size_t response_len = 0;
+                uint16_t sw = u2f_process_apdu(rx_buffer, bytes_received, tx_buffer, &response_len);
+                
+                /* Append SW to response */
+                tx_buffer[response_len++] = (sw >> 8) & 0xFF;
+                tx_buffer[response_len++] = sw & 0xFF;
+
+                usb_hid_send(tx_buffer, response_len);
+                LOG_DEBUG("Sent %zu bytes U2F response (SW: 0x%04X)", response_len, sw);
+            } else {
+                LOG_WARN("Unknown or unsupported CTAPHID command: 0x%02X", cmd);
+                /* Send error response? Or just ignore? CTAPHID spec says send ERROR */
+                uint8_t err_payload[1] = {0x01}; /* INVALID_CMD */
+                /* We can't easily send CTAPHID ERROR from here without exposing more usb_hid internals */
+                /* For now, just ignore */
+            }
 
             /* Return to idle state */
             /* Note: In a real implementation with non-blocking LED, we would use a timer here

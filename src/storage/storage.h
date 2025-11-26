@@ -55,6 +55,9 @@ typedef struct {
     char user_name[STORAGE_MAX_USER_NAME_LENGTH];       /**< User name (for resident keys) */
     char display_name[STORAGE_MAX_DISPLAY_NAME_LENGTH]; /**< Display name (for resident keys) */
     char rp_id[STORAGE_MAX_RP_ID_LENGTH];               /**< RP ID (for resident keys) */
+    int algorithm;                                      /**< COSE algorithm identifier */
+    bool hmac_secret;                                   /**< HMAC-Secret extension enabled */
+    uint8_t protection_policy;                          /**< Credential protection policy */
 } storage_credential_t;
 
 /**

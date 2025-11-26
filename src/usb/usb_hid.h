@@ -56,9 +56,10 @@ int usb_hid_send(const uint8_t *data, size_t len);
  *
  * @param data Pointer to receive buffer
  * @param max_len Maximum length to receive
+ * @param cmd Pointer to store the received command byte
  * @return Number of bytes received, or negative error code
  */
-int usb_hid_receive(uint8_t *data, size_t max_len);
+int usb_hid_receive(uint8_t *data, size_t max_len, uint8_t *cmd);
 
 #ifdef __cplusplus
 }

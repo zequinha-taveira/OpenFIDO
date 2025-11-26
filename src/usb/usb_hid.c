@@ -100,7 +100,7 @@ int usb_hid_send(const uint8_t *data, size_t len)
     return sent;
 }
 
-int usb_hid_receive(uint8_t *data, size_t max_len)
+int usb_hid_receive(uint8_t *data, size_t max_len, uint8_t *cmd)
 {
     uint8_t packet[CTAPHID_PACKET_SIZE];
 
@@ -116,7 +116,10 @@ int usb_hid_receive(uint8_t *data, size_t max_len)
     current_cid = __builtin_bswap32(init_pkt->cid);
 
     /* Extract command */
-    uint8_t cmd = init_pkt->cmd & 0x7F;
+    uint8_t command = init_pkt->cmd & 0x7F;
+    if (cmd != NULL) {
+        *cmd = command;
+    }
 
     /* Extract byte count */
     size_t total_len = ((size_t) init_pkt->bcnth << 8) | init_pkt->bcntl;
@@ -127,7 +130,7 @@ int usb_hid_receive(uint8_t *data, size_t max_len)
     }
 
     /* Handle INIT command specially */
-    if (cmd == CTAPHID_INIT) {
+    if (command == CTAPHID_INIT) {
         /* Return INIT response */
         uint8_t nonce[8];
         memcpy(nonce, init_pkt->data, 8);

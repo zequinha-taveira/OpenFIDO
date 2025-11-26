@@ -24,6 +24,7 @@
 #include "mbedtls/hkdf.h"
 #include "mbedtls/md.h"
 #include "mbedtls/sha256.h"
+#include "mbedtls/pk.h"
 #endif
 
 #include <string.h>
@@ -507,4 +508,171 @@ int crypto_hkdf_sha256(const uint8_t *salt, size_t salt_len, const uint8_t *ikm,
 #endif
 
     return CRYPTO_OK;
+}
+
+int crypto_ed25519_generate_keypair(uint8_t *private_key, uint8_t *public_key)
+{
+    if (!crypto_ctx.initialized || private_key == NULL || public_key == NULL) {
+        return CRYPTO_ERROR_INVALID_PARAM;
+    }
+
+#ifdef USE_MBEDTLS
+    mbedtls_pk_context pk;
+    mbedtls_pk_init(&pk);
+
+    /* Setup PK context for Ed25519 */
+    int ret = mbedtls_pk_setup(&pk, mbedtls_pk_info_from_type(MBEDTLS_PK_ED25519));
+    if (ret != 0) {
+        /* Fallback: try to use ECP directly if PK type not found (older mbedTLS) */
+        /* For now, just log error */
+        LOG_ERROR("Failed to setup PK context for Ed25519: %d", ret);
+        goto cleanup;
+    }
+
+    /* Generate key */
+    ret = mbedtls_pk_gen_key(&pk, mbedtls_ctr_drbg_random, &crypto_ctx.ctr_drbg);
+    if (ret != 0) {
+        LOG_ERROR("Ed25519 key generation failed: %d", ret);
+        goto cleanup;
+    }
+
+    /* Export private key */
+    /* Accessing underlying context is implementation specific. */
+    mbedtls_ecp_keypair *ecp = mbedtls_pk_ec(pk);
+    ret = mbedtls_mpi_write_binary(&ecp->d, private_key, 32);
+    if (ret != 0) {
+        LOG_ERROR("Failed to export private key: %d", ret);
+        goto cleanup;
+    }
+
+    /* Export public key (32 bytes) */
+    size_t olen;
+    ret = mbedtls_ecp_point_write_binary(&ecp->grp, &ecp->Q, MBEDTLS_ECP_PF_COMPRESSED, 
+                                         &olen, public_key, 32);
+    if (ret != 0) {
+        LOG_ERROR("Failed to export public key: %d", ret);
+        goto cleanup;
+    }
+
+cleanup:
+    mbedtls_pk_free(&pk);
+    return (ret == 0) ? CRYPTO_OK : CRYPTO_ERROR;
+#else
+    return CRYPTO_ERROR;
+#endif
+}
+
+int crypto_ed25519_sign(const uint8_t *private_key, const uint8_t *message, size_t message_len,
+                        uint8_t *signature)
+{
+    if (!crypto_ctx.initialized || private_key == NULL || message == NULL || signature == NULL) {
+        return CRYPTO_ERROR_INVALID_PARAM;
+    }
+
+#ifdef USE_MBEDTLS
+    mbedtls_pk_context pk;
+    mbedtls_pk_init(&pk);
+
+    int ret = mbedtls_pk_setup(&pk, mbedtls_pk_info_from_type(MBEDTLS_PK_ED25519));
+    if (ret != 0) goto cleanup;
+
+    /* Load private key */
+    mbedtls_ecp_keypair *ecp = mbedtls_pk_ec(pk);
+    ret = mbedtls_ecp_group_load(&ecp->grp, MBEDTLS_ECP_DP_ED25519);
+    if (ret != 0) goto cleanup;
+
+    ret = mbedtls_mpi_read_binary(&ecp->d, private_key, 32);
+    if (ret != 0) goto cleanup;
+    
+    /* Regenerate Q from d */
+    ret = mbedtls_ecp_mul(&ecp->grp, &ecp->Q, &ecp->d, &ecp->grp.G, 
+                          mbedtls_ctr_drbg_random, &crypto_ctx.ctr_drbg);
+    if (ret != 0) goto cleanup;
+
+    /* Sign */
+    size_t sig_len;
+    ret = mbedtls_pk_sign(&pk, MBEDTLS_MD_NONE, message, message_len, signature, 64, &sig_len,
+                          mbedtls_ctr_drbg_random, &crypto_ctx.ctr_drbg);
+    
+    if (ret != 0) {
+        LOG_ERROR("Ed25519 signing failed: %d", ret);
+    }
+
+cleanup:
+    mbedtls_pk_free(&pk);
+    return (ret == 0) ? CRYPTO_OK : CRYPTO_ERROR;
+#else
+    return CRYPTO_ERROR;
+#endif
+}
+
+int crypto_ed25519_verify(const uint8_t *public_key, const uint8_t *message, size_t message_len,
+                          const uint8_t *signature)
+{
+    if (!crypto_ctx.initialized || public_key == NULL || message == NULL || signature == NULL) {
+        return CRYPTO_ERROR_INVALID_PARAM;
+    }
+
+#ifdef USE_MBEDTLS
+    mbedtls_pk_context pk;
+    mbedtls_pk_init(&pk);
+
+    int ret = mbedtls_pk_setup(&pk, mbedtls_pk_info_from_type(MBEDTLS_PK_ED25519));
+    if (ret != 0) goto cleanup;
+
+    /* Load public key */
+    mbedtls_ecp_keypair *ecp = mbedtls_pk_ec(pk);
+    ret = mbedtls_ecp_group_load(&ecp->grp, MBEDTLS_ECP_DP_ED25519);
+    if (ret != 0) goto cleanup;
+
+    /* Load point from compressed format */
+    ret = mbedtls_ecp_point_read_binary(&ecp->grp, &ecp->Q, public_key, 32);
+    if (ret != 0) goto cleanup;
+
+    /* Verify */
+    ret = mbedtls_pk_verify(&pk, MBEDTLS_MD_NONE, message, message_len, signature, 64);
+
+cleanup:
+    mbedtls_pk_free(&pk);
+    return (ret == 0) ? CRYPTO_OK : CRYPTO_ERROR;
+#else
+    return CRYPTO_ERROR;
+#endif
+}
+
+int crypto_ed25519_get_public_key(const uint8_t *private_key, uint8_t *public_key)
+{
+    if (!crypto_ctx.initialized || private_key == NULL || public_key == NULL) {
+        return CRYPTO_ERROR_INVALID_PARAM;
+    }
+
+#ifdef USE_MBEDTLS
+    mbedtls_ecp_group grp;
+    mbedtls_mpi d;
+    mbedtls_ecp_point Q;
+
+    mbedtls_ecp_group_init(&grp);
+    mbedtls_mpi_init(&d);
+    mbedtls_ecp_point_init(&Q);
+
+    int ret = mbedtls_ecp_group_load(&grp, MBEDTLS_ECP_DP_ED25519);
+    if (ret != 0) goto cleanup;
+
+    ret = mbedtls_mpi_read_binary(&d, private_key, 32);
+    if (ret != 0) goto cleanup;
+
+    ret = mbedtls_ecp_mul(&grp, &Q, &d, &grp.G, mbedtls_ctr_drbg_random, &crypto_ctx.ctr_drbg);
+    if (ret != 0) goto cleanup;
+
+    size_t olen;
+    ret = mbedtls_ecp_point_write_binary(&grp, &Q, MBEDTLS_ECP_PF_COMPRESSED, &olen, public_key, 32);
+
+cleanup:
+    mbedtls_ecp_group_free(&grp);
+    mbedtls_mpi_free(&d);
+    mbedtls_ecp_point_free(&Q);
+    return (ret == 0) ? CRYPTO_OK : CRYPTO_ERROR;
+#else
+    return CRYPTO_ERROR;
+#endif
 }

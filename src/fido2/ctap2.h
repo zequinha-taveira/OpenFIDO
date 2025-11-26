@@ -103,6 +103,11 @@ extern "C" {
 #define CTAP2_AUTH_DATA_FLAG_AT 0x40 /* Attested Credential Data */
 #define CTAP2_AUTH_DATA_FLAG_ED 0x80 /* Extension Data */
 
+/* Extension IDs */
+#define CTAP2_EXT_HMAC_SECRET "hmac-secret"
+#define CTAP2_EXT_CRED_PROTECT "credProtect"
+#define CTAP2_EXT_LARGE_BLOBS "largeBlobKey"
+
 /**
  * @brief CTAP2 Request Structure
  */

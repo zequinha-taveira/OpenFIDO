@@ -117,6 +117,50 @@ int crypto_ecdsa_verify(const uint8_t *public_key, const uint8_t *hash, const ui
  */
 int crypto_ecdsa_get_public_key(const uint8_t *private_key, uint8_t *public_key);
 
+/* ========== Ed25519 Functions ========== */
+
+/**
+ * @brief Generate Ed25519 key pair
+ *
+ * @param private_key Output private key (32 bytes)
+ * @param public_key Output public key (32 bytes)
+ * @return CRYPTO_OK on success, error code otherwise
+ */
+int crypto_ed25519_generate_keypair(uint8_t *private_key, uint8_t *public_key);
+
+/**
+ * @brief Sign data with Ed25519
+ *
+ * @param private_key Private key (32 bytes)
+ * @param message Message to sign
+ * @param message_len Length of message
+ * @param signature Output signature (64 bytes)
+ * @return CRYPTO_OK on success, error code otherwise
+ */
+int crypto_ed25519_sign(const uint8_t *private_key, const uint8_t *message, size_t message_len,
+                        uint8_t *signature);
+
+/**
+ * @brief Verify Ed25519 signature
+ *
+ * @param public_key Public key (32 bytes)
+ * @param message Message to verify
+ * @param message_len Length of message
+ * @param signature Signature to verify (64 bytes)
+ * @return CRYPTO_OK if valid, error code otherwise
+ */
+int crypto_ed25519_verify(const uint8_t *public_key, const uint8_t *message, size_t message_len,
+                          const uint8_t *signature);
+
+/**
+ * @brief Get public key from private key (Ed25519)
+ *
+ * @param private_key Private key (32 bytes)
+ * @param public_key Output public key (32 bytes)
+ * @return CRYPTO_OK on success, error code otherwise
+ */
+int crypto_ed25519_get_public_key(const uint8_t *private_key, uint8_t *public_key);
+
 /* ========== AES-256-GCM Functions ========== */
 
 /**
