@@ -47,15 +47,15 @@ static void init_large_blob_storage(void)
     if (!large_blob_storage.initialized) {
         /* Initialize with empty array: 0x80 (CBOR array of 0 items) + 16-byte hash */
         large_blob_storage.data[0] = 0x80; /* Empty CBOR array */
-        
+
         /* Compute SHA-256 of empty array */
         uint8_t hash[32];
         crypto_sha256(large_blob_storage.data, 1, hash);
         memcpy(&large_blob_storage.data[1], hash, 16); /* First 16 bytes of hash */
-        
+
         large_blob_storage.size = 17; /* 1 byte array + 16 bytes hash */
         large_blob_storage.initialized = true;
-        
+
         LOG_INFO("Large blob storage initialized");
     }
 }
@@ -149,7 +149,7 @@ uint8_t ctap2_large_blobs(const uint8_t *request_data, size_t request_len, uint8
 
         switch (key) {
             case LB_PARAM_GET:
-                if (cbor_decode_uint(&decoder, (uint64_t *)&length) != CBOR_OK) {
+                if (cbor_decode_uint(&decoder, (uint64_t *) &length) != CBOR_OK) {
                     return CTAP2_ERR_INVALID_CBOR;
                 }
                 is_get = true;
@@ -164,13 +164,13 @@ uint8_t ctap2_large_blobs(const uint8_t *request_data, size_t request_len, uint8
                 break;
 
             case LB_PARAM_OFFSET:
-                if (cbor_decode_uint(&decoder, (uint64_t *)&offset) != CBOR_OK) {
+                if (cbor_decode_uint(&decoder, (uint64_t *) &offset) != CBOR_OK) {
                     return CTAP2_ERR_INVALID_CBOR;
                 }
                 break;
 
             case LB_PARAM_LENGTH:
-                if (cbor_decode_uint(&decoder, (uint64_t *)&length) != CBOR_OK) {
+                if (cbor_decode_uint(&decoder, (uint64_t *) &length) != CBOR_OK) {
                     return CTAP2_ERR_INVALID_CBOR;
                 }
                 break;

@@ -8,8 +8,8 @@
 
 #ifdef PLATFORM_RP2350
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "logger.h"
 
@@ -28,7 +28,7 @@ int rp2350_secure_boot_init(void)
     LOG_INFO("RP2350 Secure boot initialization");
 
     /* Check if secure boot is already enabled */
-    volatile uint32_t *boot_flags = (volatile uint32_t *)OTP_BOOT_FLAGS;
+    volatile uint32_t *boot_flags = (volatile uint32_t *) OTP_BOOT_FLAGS;
 
     if (*boot_flags & 0x01) {
         LOG_INFO("Secure boot already enabled");
@@ -50,11 +50,11 @@ int rp2350_program_secure_boot_key(const uint8_t *key)
     LOG_WARN("Programming secure boot key - THIS IS IRREVERSIBLE!");
 
     /* Write key to OTP */
-    volatile uint32_t *otp_key = (volatile uint32_t *)OTP_SECURE_BOOT_KEY;
+    volatile uint32_t *otp_key = (volatile uint32_t *) OTP_SECURE_BOOT_KEY;
 
     for (int i = 0; i < 8; i++) {
-        uint32_t word = (key[i * 4 + 0] << 0) | (key[i * 4 + 1] << 8) |
-                        (key[i * 4 + 2] << 16) | (key[i * 4 + 3] << 24);
+        uint32_t word = (key[i * 4 + 0] << 0) | (key[i * 4 + 1] << 8) | (key[i * 4 + 2] << 16) |
+                        (key[i * 4 + 3] << 24);
 
         /* OTP programming requires special sequence */
         /* This is simplified - actual implementation needs proper OTP write sequence */

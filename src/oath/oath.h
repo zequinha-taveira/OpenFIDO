@@ -14,9 +14,9 @@
 #ifndef OATH_H
 #define OATH_H
 
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,8 +24,8 @@ extern "C" {
 
 /* OATH Algorithm Types */
 typedef enum {
-    OATH_TYPE_HOTP = 0x01,          /* HMAC-based OTP */
-    OATH_TYPE_TOTP = 0x02           /* Time-based OTP */
+    OATH_TYPE_HOTP = 0x01, /* HMAC-based OTP */
+    OATH_TYPE_TOTP = 0x02  /* Time-based OTP */
 } oath_type_t;
 
 /* OATH Hash Algorithms */
@@ -37,14 +37,14 @@ typedef enum {
 
 /* OATH Credential */
 typedef struct {
-    char name[64];                  /* Credential name */
-    oath_type_t type;               /* HOTP or TOTP */
-    oath_hash_t hash;               /* Hash algorithm */
-    uint8_t secret[64];             /* Shared secret */
-    size_t secret_len;              /* Secret length */
-    uint8_t digits;                 /* Number of digits (6 or 8) */
-    uint32_t counter;               /* HOTP counter */
-    uint32_t period;                /* TOTP period in seconds (default 30) */
+    char name[64];      /* Credential name */
+    oath_type_t type;   /* HOTP or TOTP */
+    oath_hash_t hash;   /* Hash algorithm */
+    uint8_t secret[64]; /* Shared secret */
+    size_t secret_len;  /* Secret length */
+    uint8_t digits;     /* Number of digits (6 or 8) */
+    uint32_t counter;   /* HOTP counter */
+    uint32_t period;    /* TOTP period in seconds (default 30) */
 } oath_credential_t;
 
 /**
@@ -88,8 +88,8 @@ int oath_list_credentials(char names[][64], size_t max_count, size_t *count);
  * @param code Output: generated code
  * @return 0 on success, error code otherwise
  */
-int oath_hotp_generate(const uint8_t *secret, size_t secret_len, uint64_t counter,
-                       uint8_t digits, uint32_t *code);
+int oath_hotp_generate(const uint8_t *secret, size_t secret_len, uint64_t counter, uint8_t digits,
+                       uint32_t *code);
 
 /**
  * @brief Generate TOTP code

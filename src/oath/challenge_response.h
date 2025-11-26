@@ -9,8 +9,8 @@
 #ifndef CHALLENGE_RESPONSE_H
 #define CHALLENGE_RESPONSE_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,8 +18,8 @@ extern "C" {
 
 /* Challenge-Response slot */
 typedef struct {
-    uint8_t secret[20];             /* HMAC-SHA1 secret (20 bytes) */
-    bool configured;                /* Is slot configured? */
+    uint8_t secret[20]; /* HMAC-SHA1 secret (20 bytes) */
+    bool configured;    /* Is slot configured? */
 } challenge_response_slot_t;
 
 /**
@@ -46,7 +46,7 @@ int challenge_response_configure(uint8_t slot, const uint8_t *secret);
  * @return 0 on success, error code otherwise
  */
 int challenge_response_calculate(uint8_t slot, const uint8_t *challenge, size_t challenge_len,
-                                  uint8_t *response);
+                                 uint8_t *response);
 
 #ifdef __cplusplus
 }

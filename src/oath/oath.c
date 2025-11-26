@@ -53,8 +53,8 @@ int oath_add_credential(const oath_credential_t *cred)
     memcpy(&oath_storage.credentials[oath_storage.count], cred, sizeof(oath_credential_t));
     oath_storage.count++;
 
-    LOG_INFO("OATH credential added: %s (type=%d, digits=%d)",
-             cred->name, cred->type, cred->digits);
+    LOG_INFO("OATH credential added: %s (type=%d, digits=%d)", cred->name, cred->type,
+             cred->digits);
 
     return 0;
 }
@@ -69,8 +69,7 @@ int oath_delete_credential(const char *name)
     for (size_t i = 0; i < oath_storage.count; i++) {
         if (strcmp(oath_storage.credentials[i].name, name) == 0) {
             /* Remove by shifting remaining credentials */
-            memmove(&oath_storage.credentials[i],
-                    &oath_storage.credentials[i + 1],
+            memmove(&oath_storage.credentials[i], &oath_storage.credentials[i + 1],
                     (oath_storage.count - i - 1) * sizeof(oath_credential_t));
             oath_storage.count--;
 
@@ -100,8 +99,8 @@ int oath_list_credentials(char names[][64], size_t max_count, size_t *count)
     return 0;
 }
 
-int oath_hotp_generate(const uint8_t *secret, size_t secret_len, uint64_t counter,
-                       uint8_t digits, uint32_t *code)
+int oath_hotp_generate(const uint8_t *secret, size_t secret_len, uint64_t counter, uint8_t digits,
+                       uint32_t *code)
 {
     /* HOTP = Truncate(HMAC-SHA1(secret, counter)) */
 
@@ -120,10 +119,8 @@ int oath_hotp_generate(const uint8_t *secret, size_t secret_len, uint64_t counte
 
     /* Dynamic truncation (RFC 4226 Section 5.3) */
     uint8_t offset = hmac[31] & 0x0F;
-    uint32_t binary = ((hmac[offset] & 0x7F) << 24) |
-                      ((hmac[offset + 1] & 0xFF) << 16) |
-                      ((hmac[offset + 2] & 0xFF) << 8) |
-                      (hmac[offset + 3] & 0xFF);
+    uint32_t binary = ((hmac[offset] & 0x7F) << 24) | ((hmac[offset + 1] & 0xFF) << 16) |
+                      ((hmac[offset + 2] & 0xFF) << 8) | (hmac[offset + 3] & 0xFF);
 
     /* Generate code with specified number of digits */
     uint32_t modulo = 1;
@@ -167,8 +164,8 @@ int oath_calculate(const char *name, uint32_t *code)
     /* Generate code based on type */
     int result;
     if (cred->type == OATH_TYPE_HOTP) {
-        result = oath_hotp_generate(cred->secret, cred->secret_len, cred->counter,
-                                    cred->digits, code);
+        result =
+            oath_hotp_generate(cred->secret, cred->secret_len, cred->counter, cred->digits, code);
         if (result == 0) {
             /* Increment counter for next use */
             cred->counter++;
@@ -176,8 +173,8 @@ int oath_calculate(const char *name, uint32_t *code)
     } else if (cred->type == OATH_TYPE_TOTP) {
         /* Get current timestamp (would need RTC or time sync) */
         uint64_t timestamp = 0; /* TODO: Get actual timestamp */
-        result = oath_totp_generate(cred->secret, cred->secret_len, timestamp,
-                                    cred->period, cred->digits, code);
+        result = oath_totp_generate(cred->secret, cred->secret_len, timestamp, cred->period,
+                                    cred->digits, code);
     } else {
         return -3;
     }

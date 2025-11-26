@@ -9,8 +9,8 @@
 #ifndef LED_PATTERNS_H
 #define LED_PATTERNS_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,21 +18,21 @@ extern "C" {
 
 /* LED Pattern Types */
 typedef enum {
-    LED_PATTERN_IDLE = 0,           /* Device idle */
-    LED_PATTERN_PROCESSING,         /* Processing request */
-    LED_PATTERN_USER_PRESENCE,      /* Waiting for user presence */
-    LED_PATTERN_SUCCESS,            /* Operation successful */
-    LED_PATTERN_ERROR,              /* Operation failed */
-    LED_PATTERN_BOOTLOADER,         /* Bootloader/rescue mode */
-    LED_PATTERN_CUSTOM              /* User-defined pattern */
+    LED_PATTERN_IDLE = 0,      /* Device idle */
+    LED_PATTERN_PROCESSING,    /* Processing request */
+    LED_PATTERN_USER_PRESENCE, /* Waiting for user presence */
+    LED_PATTERN_SUCCESS,       /* Operation successful */
+    LED_PATTERN_ERROR,         /* Operation failed */
+    LED_PATTERN_BOOTLOADER,    /* Bootloader/rescue mode */
+    LED_PATTERN_CUSTOM         /* User-defined pattern */
 } led_pattern_type_t;
 
 /* LED Pattern Definition */
 typedef struct {
-    uint16_t on_ms;                 /* LED on duration in milliseconds */
-    uint16_t off_ms;                /* LED off duration in milliseconds */
-    uint8_t repeat_count;           /* Number of times to repeat (0 = infinite) */
-    uint8_t brightness;             /* Brightness level (0-255) */
+    uint16_t on_ms;       /* LED on duration in milliseconds */
+    uint16_t off_ms;      /* LED off duration in milliseconds */
+    uint8_t repeat_count; /* Number of times to repeat (0 = infinite) */
+    uint8_t brightness;   /* Brightness level (0-255) */
 } led_pattern_t;
 
 /**

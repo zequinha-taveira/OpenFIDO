@@ -11,8 +11,8 @@
 #ifndef YUBIKEY_OTP_H
 #define YUBIKEY_OTP_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,14 +20,14 @@ extern "C" {
 
 /* Yubikey OTP Configuration */
 typedef struct {
-    uint8_t public_id[6];           /* Public ID (6 bytes) */
-    uint8_t private_id[6];          /* Private ID (6 bytes) */
-    uint8_t aes_key[16];            /* AES-128 key */
-    uint16_t counter;               /* Session counter */
-    uint8_t timestamp_low;          /* Timestamp low byte */
-    uint16_t timestamp_high;        /* Timestamp high word */
-    uint8_t session_use;            /* Session use counter */
-    uint16_t random;                /* Random number */
+    uint8_t public_id[6];    /* Public ID (6 bytes) */
+    uint8_t private_id[6];   /* Private ID (6 bytes) */
+    uint8_t aes_key[16];     /* AES-128 key */
+    uint16_t counter;        /* Session counter */
+    uint8_t timestamp_low;   /* Timestamp low byte */
+    uint16_t timestamp_high; /* Timestamp high word */
+    uint8_t session_use;     /* Session use counter */
+    uint16_t random;         /* Random number */
 } yubikey_otp_config_t;
 
 /**

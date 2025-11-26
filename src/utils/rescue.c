@@ -73,13 +73,12 @@ void rescue_enter(void)
         /* Try to receive data */
         if (usb_hid_receive(rx_buffer, sizeof(rx_buffer), &bytes_received, NULL) == USB_HID_OK &&
             bytes_received > 0) {
-
             /* Parse command */
             if (bytes_received < 1) {
                 continue;
             }
 
-            rescue_command_t cmd = (rescue_command_t)rx_buffer[0];
+            rescue_command_t cmd = (rescue_command_t) rx_buffer[0];
             const uint8_t *data = &rx_buffer[1];
             size_t data_len = bytes_received - 1;
 
@@ -174,10 +173,11 @@ int rescue_factory_reset(void)
 size_t rescue_get_diagnostics(uint8_t *buffer, size_t buffer_size)
 {
     /* Build diagnostics string */
-    const char *diag = "OpenFIDO Diagnostics\n"
-                       "Status: OK\n"
-                       "Storage: OK\n"
-                       "USB: OK\n";
+    const char *diag =
+        "OpenFIDO Diagnostics\n"
+        "Status: OK\n"
+        "Storage: OK\n"
+        "USB: OK\n";
 
     size_t diag_len = strlen(diag);
     if (diag_len > buffer_size) {

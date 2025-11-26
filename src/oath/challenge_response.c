@@ -43,7 +43,7 @@ int challenge_response_configure(uint8_t slot, const uint8_t *secret)
 }
 
 int challenge_response_calculate(uint8_t slot, const uint8_t *challenge, size_t challenge_len,
-                                  uint8_t *response)
+                                 uint8_t *response)
 {
     if (slot < 1 || slot > 2) {
         LOG_ERROR("Invalid slot number: %d", slot);

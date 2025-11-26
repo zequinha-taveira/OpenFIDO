@@ -8,8 +8,8 @@
 
 #ifdef PLATFORM_ESP32
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "logger.h"
 
@@ -27,7 +27,7 @@ int esp32_secure_boot_init(void)
     LOG_INFO("ESP32-S3 Secure boot initialization");
 
     /* Check if secure boot is enabled */
-    volatile uint32_t *secure_boot_reg = (volatile uint32_t *)EFUSE_SECURE_BOOT_EN;
+    volatile uint32_t *secure_boot_reg = (volatile uint32_t *) EFUSE_SECURE_BOOT_EN;
 
     if (*secure_boot_reg & 0x01) {
         LOG_INFO("Secure boot already enabled");

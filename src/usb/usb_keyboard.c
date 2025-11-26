@@ -28,10 +28,8 @@
 #define HID_KEY_9 0x26
 
 /* Keycode lookup for digits */
-static const uint8_t digit_keycodes[] = {
-    HID_KEY_0, HID_KEY_1, HID_KEY_2, HID_KEY_3, HID_KEY_4,
-    HID_KEY_5, HID_KEY_6, HID_KEY_7, HID_KEY_8, HID_KEY_9
-};
+static const uint8_t digit_keycodes[] = {HID_KEY_0, HID_KEY_1, HID_KEY_2, HID_KEY_3, HID_KEY_4,
+                                         HID_KEY_5, HID_KEY_6, HID_KEY_7, HID_KEY_8, HID_KEY_9};
 
 int usb_keyboard_init(void)
 {
