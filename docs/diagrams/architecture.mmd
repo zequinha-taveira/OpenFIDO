@@ -1,0 +1,40 @@
+graph TD
+    subgraph "Hardware Abstraction Layer"
+        HAL[HAL Interface]
+        ESP32[ESP32 Impl]
+        STM32[STM32 Impl]
+        NRF52[nRF52 Impl]
+        HAL --> ESP32
+        HAL --> STM32
+        HAL --> NRF52
+    end
+
+    subgraph "Core Protocols"
+        CTAP2[FIDO2 / CTAP2]
+        U2F[U2F Legacy]
+        CTAP2 --> CBOR[CBOR Encoder]
+        CTAP2 --> Crypto[Crypto Lib]
+        CTAP2 --> Storage[Secure Storage]
+    end
+
+    subgraph "Smart Card Protocols"
+        CCID[USB CCID]
+        SC_API[Smart Card API]
+        PIV[PIV Applet]
+        OpenPGP[OpenPGP Applet]
+        CCID --> SC_API
+        SC_API --> PIV
+        SC_API --> OpenPGP
+    end
+
+    subgraph "Infrastructure"
+        USB_HID[USB HID]
+        Logger[Logger]
+        Utils[Utils]
+    end
+
+    USB_HID --> CTAP2
+    USB_HID --> U2F
+    CTAP2 --> HAL
+    Storage --> HAL
+    Crypto --> HAL

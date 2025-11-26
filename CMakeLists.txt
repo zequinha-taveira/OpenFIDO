@@ -20,10 +20,16 @@ set(CMAKE_C_FLAGS_DEBUG "-g -O0")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 
 # Source files
+# Source files
 set(FIDO2_SOURCES
-    src/fido2/ctap2.c
-    src/fido2/cbor.c
-    src/fido2/authenticator.c
+    src/fido2/core/ctap2.c
+    src/fido2/core/cbor.c
+    src/fido2/core/u2f.c
+    src/fido2/commands/ctap2_commands.c
+    src/fido2/extensions/ctap2_config.c
+    src/fido2/extensions/ctap2_credential_mgmt.c
+    src/fido2/extensions/ctap2_large_blobs.c
+    src/fido2/permissions.c
 )
 
 set(CRYPTO_SOURCES
@@ -89,6 +95,9 @@ endif()
 include_directories(
     src
     src/fido2
+    src/fido2/core
+    src/fido2/commands
+    src/fido2/extensions
     src/crypto
     src/storage
     src/hal
@@ -97,6 +106,8 @@ include_directories(
     src/openpgp
     src/oath
     src/utils
+    src/common
+    src/smartcard
 )
 
 # Main executable

@@ -10,6 +10,7 @@
 #define LOGGER_H
 
 #include <stdio.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,38 +25,43 @@ typedef enum {
     LOG_LEVEL_DEBUG
 } log_level_t;
 
-/* Current log level (can be configured) */
-#ifndef LOG_LEVEL
-#define LOG_LEVEL LOG_LEVEL_INFO
-#endif
-
 /* Initialize logger */
 void logger_init(void);
 
-/* Logging macros */
-#define LOG_ERROR(fmt, ...)                             \
-    do {                                                \
-        if (LOG_LEVEL >= LOG_LEVEL_ERROR)               \
-            printf("[ERROR] " fmt "\n", ##__VA_ARGS__); \
-    } while (0)
+/* Set log level at runtime */
+void logger_set_level(log_level_t level);
 
-#define LOG_WARN(fmt, ...)                              \
-    do {                                                \
-        if (LOG_LEVEL >= LOG_LEVEL_WARN)                \
-            printf("[WARN]  " fmt "\n", ##__VA_ARGS__); \
-    } while (0)
+/* Get current log level */
+log_level_t logger_get_level(void);
 
-#define LOG_INFO(fmt, ...)                              \
-    do {                                                \
-        if (LOG_LEVEL >= LOG_LEVEL_INFO)                \
-            printf("[INFO]  " fmt "\n", ##__VA_ARGS__); \
-    } while (0)
+/* Core logging function */
+void logger_log(log_level_t level, const char *file, int line, const char *fmt, ...);
 
-#define LOG_DEBUG(fmt, ...)                             \
-    do {                                                \
-        if (LOG_LEVEL >= LOG_LEVEL_DEBUG)               \
-            printf("[DEBUG] " fmt "\n", ##__VA_ARGS__); \
-    } while (0)
+/* Logging macros with context */
+#define LOG_ERROR(fmt, ...) \
+    logger_log(LOG_LEVEL_ERROR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+
+#define LOG_WARN(fmt, ...) \
+    logger_log(LOG_LEVEL_WARN, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+
+#define LOG_INFO(fmt, ...) \
+    logger_log(LOG_LEVEL_INFO, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+
+#define LOG_DEBUG(fmt, ...) \
+    logger_log(LOG_LEVEL_DEBUG, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+
+/* Context logging macros (for future use) */
+#define LOG_ERROR_CTX(ctx, fmt, ...) \
+    logger_log(LOG_LEVEL_ERROR, __FILE__, __LINE__, "[%s] " fmt, ctx, ##__VA_ARGS__)
+
+#define LOG_WARN_CTX(ctx, fmt, ...) \
+    logger_log(LOG_LEVEL_WARN, __FILE__, __LINE__, "[%s] " fmt, ctx, ##__VA_ARGS__)
+
+#define LOG_INFO_CTX(ctx, fmt, ...) \
+    logger_log(LOG_LEVEL_INFO, __FILE__, __LINE__, "[%s] " fmt, ctx, ##__VA_ARGS__)
+
+#define LOG_DEBUG_CTX(ctx, fmt, ...) \
+    logger_log(LOG_LEVEL_DEBUG, __FILE__, __LINE__, "[%s] " fmt, ctx, ##__VA_ARGS__)
 
 #ifdef __cplusplus
 }

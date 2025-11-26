@@ -10,7 +10,7 @@
 
 #include <string.h>
 
-#include "../utils/logger.h"
+#include "logger.h"
 #include "usb_ccid.h"
 
 /* Forward declarations from usb_ccid.h */
