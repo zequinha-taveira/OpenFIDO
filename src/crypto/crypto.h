@@ -208,6 +208,21 @@ int crypto_aes_gcm_decrypt(const uint8_t *key, const uint8_t *iv, const uint8_t 
  */
 int crypto_random_generate(uint8_t *buffer, size_t len);
 
+/* ========== Secure Memory Operations ========== */
+
+/**
+ * @brief Securely zero memory to prevent leakage of sensitive data
+ *
+ * This function uses a volatile pointer to prevent compiler optimizations
+ * that might eliminate the memory clearing operation. Critical for ensuring
+ * that sensitive data (e.g., private keys, PINs, shared secrets) does not
+ * remain in memory after use.
+ *
+ * @param ptr Pointer to memory to clear
+ * @param len Number of bytes to clear
+ */
+void crypto_secure_zero(void *ptr, size_t len);
+
 /* ========== ECDH P-256 Functions (for PIN protocol) ========== */
 
 /**

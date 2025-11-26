@@ -121,6 +121,50 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
                                 uint8_t *response_data, size_t *response_len);
 
 /**
+ * @brief Helper function to detect weak PINs
+ *
+ * Checks for common weak patterns:
+ * - All same digits (e.g., "1111")
+ * - Sequential digits (e.g., "1234")
+ *
+ * @param pin PIN bytes to check
+ * @param pin_len Length of PIN
+ * @return true if PIN is weak, false otherwise
+ */
+static bool is_weak_pin(const uint8_t *pin, size_t pin_len)
+{
+    if (pin == NULL || pin_len < 4) {
+        return true;  /* Too short = weak */
+    }
+
+    /* Check for sequential digits (e.g., "1234") */
+    bool all_sequential = true;
+    for (size_t i = 1; i < pin_len; i++) {
+        if (pin[i] != pin[i - 1] + 1) {
+            all_sequential = false;
+            break;
+        }
+    }
+    if (all_sequential) {
+        return true;
+    }
+
+    /* Check for repeated digits (e.g., "1111") */
+    bool all_same = true;
+    for (size_t i = 1; i < pin_len; i++) {
+        if (pin[i] != pin[0]) {
+            all_same = false;
+            break;
+        }
+    }
+    if (all_same) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
  * @brief Process a CTAP2 request.
  *
  * @param request Pointer to the request structure.
@@ -129,8 +173,27 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
  */
 uint8_t ctap2_process_request(const ctap2_request_t *request, ctap2_response_t *response)
 {
+    /* Input validation - Zero Trust: validate ALL inputs */
+    if (!request || !response) {
+        LOG_ERROR("NULL pointer in ctap2_process_request");
+        return CTAP2_ERR_INVALID_PARAMETER;
+    }
+
     if (!ctap2_state.initialized) {
+        LOG_ERROR("CTAP2 not initialized");
         return CTAP2_ERR_INVALID_COMMAND;
+    }
+
+    /* Validate request data pointer if length > 0 */
+    if (request->data_len > 0 && !request->data) {
+        LOG_ERROR("Invalid request: data_len=%zu but data=NULL", request->data_len);
+        return CTAP2_ERR_INVALID_PARAMETER;
+    }
+
+    /* Validate request length against maximum */
+    if (request->data_len > CTAP2_MAX_MESSAGE_SIZE) {
+        LOG_ERROR("Request too large: %zu > %d", request->data_len, CTAP2_MAX_MESSAGE_SIZE);
+        return CTAP2_ERR_REQUEST_TOO_LARGE;
     }
 
     LOG_DEBUG("Processing CTAP2 command: 0x%02X", request->cmd);
@@ -156,10 +219,13 @@ uint8_t ctap2_process_request(const ctap2_request_t *request, ctap2_response_t *
 
         case CTAP2_CMD_GET_NEXT_ASSERTION:
             return ctap2_get_next_assertion(response->data, &response->data_len);
-    }
 
-    return CTAP2_ERR_INVALID_COMMAND;
+        default:
+            LOG_WARN("Unknown CTAP2 command: 0x%02X", request->cmd);
+            return CTAP2_ERR_INVALID_COMMAND;
+    }
 }
+
 
 /**
  * @brief Handle the authenticatorGetInfo command.
@@ -275,12 +341,34 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
                 }
                 has_sub_command = true;
                 break;
-            case CP_KEY_NEW_PIN_ENC:
-                new_pin_enc_len = sizeof(new_pin_enc);
-                if (cbor_decode_bytes(&decoder, new_pin_enc, new_pin_enc_len) != CBOR_OK) {
+            case CP_KEY_NEW_PIN_ENC: {
+                size_t actual_len = sizeof(new_pin_enc);
+                
+                /* Decode and capture actual length */
+                int decode_result = cbor_decode_bytes(&decoder, new_pin_enc, &actual_len);
+                
+                if (decode_result != CBOR_OK) {
+                    crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
                     return CTAP2_ERR_INVALID_CBOR;
                 }
+                
+                /* Validate actual decoded length */
+                if (actual_len == 0) {
+                    crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
+                    LOG_WARN("Empty PIN encrypted data received");
+                    return CTAP2_ERR_PIN_POLICY_VIOLATION;
+                }
+                
+                if (actual_len > sizeof(new_pin_enc)) {
+                    crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
+                    LOG_WARN("PIN encrypted data exceeds maximum size: %zu > %zu",
+                             actual_len, sizeof(new_pin_enc));
+                    return CTAP2_ERR_INVALID_LENGTH;
+                }
+                
+                new_pin_enc_len = actual_len;
                 break;
+            }
             default:
                 cbor_skip_value(&decoder);
                 break;
@@ -307,7 +395,11 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
             /* Generate ephemeral ECDH key pair */
             uint8_t private_key[32];
             uint8_t public_key[64];
-            crypto_ecdsa_generate_keypair(private_key, public_key);
+            
+            if (crypto_ecdsa_generate_keypair(private_key, public_key) != CRYPTO_OK) {
+                crypto_secure_zero(private_key, sizeof(private_key));
+                return CTAP2_ERR_PROCESSING;
+            }
 
             cbor_encode_map_start(&encoder, 1);
             cbor_encode_uint(&encoder, CP_RESP_KEY_AGREEMENT);
@@ -326,27 +418,64 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
             cbor_encode_bytes(&encoder, &public_key[32], 32);
 
             *response_len = cbor_encoder_get_size(&encoder);
+            
+            /* CRITICAL: Securely wipe private key before returning */
+            crypto_secure_zero(private_key, sizeof(private_key));
+            
             LOG_INFO("ClientPIN: GetKeyAgreement");
             return CTAP2_OK;
         }
 
         case CP_SUBCMD_SET_PIN: {
-            /* Set new PIN */
+            /* Verify PIN is not already set */
             if (storage_is_pin_set()) {
+                crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
                 return CTAP2_ERR_PIN_INVALID;
             }
 
-            /* In production, decrypt newPinEnc using shared secret */
-            /* For now, simplified implementation */
+            /* Validate encrypted PIN was provided */
+            if (new_pin_enc_len == 0 || new_pin_enc_len > 64) {
+                crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
+                return CTAP2_ERR_MISSING_PARAMETER;
+            }
 
-            /* Verify PIN length (should be decrypted PIN) */
-            if (new_pin_enc_len < STORAGE_PIN_MIN_LENGTH ||
-                new_pin_enc_len > STORAGE_PIN_MAX_LENGTH) {
+            /* TODO: In production implementation:
+             * 1. Retrieve platform's public key from CP_KEY_KEY_AGREEMENT
+             * 2. Compute ECDH shared secret with our private key
+             * 3. Derive encryption key using HKDF-SHA256
+             * 4. Decrypt newPinEnc using AES-256-CBC
+             * For this implementation, we will simulate decryption
+             */
+
+            /* Simulate decryption (in production, use crypto_aes_gcm_decrypt) */
+            uint8_t decrypted_pin[STORAGE_PIN_MAX_LENGTH];
+            size_t decrypted_pin_len = new_pin_enc_len;
+            memcpy(decrypted_pin, new_pin_enc, new_pin_enc_len);
+
+            /* Validate PIN length AFTER decryption */
+            if (decrypted_pin_len < STORAGE_PIN_MIN_LENGTH ||
+                decrypted_pin_len > STORAGE_PIN_MAX_LENGTH) {
+                crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
+                crypto_secure_zero(decrypted_pin, sizeof(decrypted_pin));
                 return CTAP2_ERR_PIN_POLICY_VIOLATION;
             }
 
-            /* Set PIN */
-            if (storage_set_pin(new_pin_enc, new_pin_enc_len) != STORAGE_OK) {
+            /* Check for weak PINs */
+            if (is_weak_pin(decrypted_pin, decrypted_pin_len)) {
+                crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
+                crypto_secure_zero(decrypted_pin, sizeof(decrypted_pin));
+                LOG_WARN("Weak PIN rejected");
+                return CTAP2_ERR_PIN_POLICY_VIOLATION;
+            }
+
+            /* Set PIN (storage_set_pin should hash with SHA-256 before storing) */
+            int result = storage_set_pin(decrypted_pin, decrypted_pin_len);
+
+            /* CRITICAL: Securely wipe sensitive data */
+            crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
+            crypto_secure_zero(decrypted_pin, sizeof(decrypted_pin));
+
+            if (result != STORAGE_OK) {
                 return CTAP2_ERR_PROCESSING;
             }
 
@@ -358,7 +487,14 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
         case CP_SUBCMD_CHANGE_PIN: {
             /* Change existing PIN */
             if (!storage_is_pin_set()) {
+                crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
                 return CTAP2_ERR_PIN_NOT_SET;
+            }
+
+            /* Validate encrypted PIN was provided */
+            if (new_pin_enc_len == 0 || new_pin_enc_len > 64) {
+                crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
+                return CTAP2_ERR_MISSING_PARAMETER;
             }
 
             /* In production: */
@@ -367,8 +503,27 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
             /* 3. Decrypt newPinEnc */
             /* 4. Set new PIN */
 
-            /* Simplified implementation */
-            if (storage_set_pin(new_pin_enc, new_pin_enc_len) != STORAGE_OK) {
+            /* Simulate decryption */
+            uint8_t decrypted_pin[STORAGE_PIN_MAX_LENGTH];
+            size_t decrypted_pin_len = new_pin_enc_len;
+            memcpy(decrypted_pin, new_pin_enc, new_pin_enc_len);
+
+            /* Validate and check for weak PINs */
+            if (decrypted_pin_len < STORAGE_PIN_MIN_LENGTH ||
+                decrypted_pin_len > STORAGE_PIN_MAX_LENGTH ||
+                is_weak_pin(decrypted_pin, decrypted_pin_len)) {
+                crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
+                crypto_secure_zero(decrypted_pin, sizeof(decrypted_pin));
+                return CTAP2_ERR_PIN_POLICY_VIOLATION;
+            }
+
+            int result = storage_set_pin(decrypted_pin, decrypted_pin_len);
+
+            /* Cleanup sensitive data */
+            crypto_secure_zero(new_pin_enc, sizeof(new_pin_enc));
+            crypto_secure_zero(decrypted_pin, sizeof(decrypted_pin));
+
+            if (result != STORAGE_OK) {
                 return CTAP2_ERR_PROCESSING;
             }
 
@@ -402,6 +557,10 @@ uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
             cbor_encode_bytes(&encoder, pin_token, sizeof(pin_token));
 
             *response_len = cbor_encoder_get_size(&encoder);
+            
+            /* CRITICAL: Securely wipe PIN token after encoding */
+            crypto_secure_zero(pin_token, sizeof(pin_token));
+            
             LOG_INFO("ClientPIN: GetPINToken");
             return CTAP2_OK;
         }
