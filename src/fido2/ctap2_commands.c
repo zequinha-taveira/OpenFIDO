@@ -6,12 +6,11 @@
  * @license MIT License
  */
 
-#include "ctap2.h"
-
 #include <string.h>
 
 #include "cbor.h"
 #include "crypto.h"
+#include "ctap2.h"
 #include "hal.h"
 #include "logger.h"
 #include "storage.h"
@@ -53,7 +52,7 @@ static const uint8_t AAGUID[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0
                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 uint8_t ctap2_make_credential(const uint8_t *request_data, size_t request_len,
-                               uint8_t *response_data, size_t *response_len)
+                              uint8_t *response_data, size_t *response_len)
 {
     LOG_INFO("MakeCredential command");
 
@@ -146,7 +145,8 @@ uint8_t ctap2_make_credential(const uint8_t *request_data, size_t request_len,
                             return CTAP2_ERR_INVALID_CBOR;
                         }
                     } else if (strcmp(user_key, "displayName") == 0) {
-                        if (cbor_decode_text(&decoder, display_name, sizeof(display_name)) != CBOR_OK) {
+                        if (cbor_decode_text(&decoder, display_name, sizeof(display_name)) !=
+                            CBOR_OK) {
                             return CTAP2_ERR_INVALID_CBOR;
                         }
                     } else {
@@ -180,7 +180,8 @@ uint8_t ctap2_make_credential(const uint8_t *request_data, size_t request_len,
                             if (cbor_decode_int(&decoder, &alg) != CBOR_OK) {
                                 return CTAP2_ERR_INVALID_CBOR;
                             }
-                            if (j == 0) algorithm = (int)alg;
+                            if (j == 0)
+                                algorithm = (int) alg;
                         } else {
                             cbor_skip_value(&decoder);
                         }
@@ -224,7 +225,7 @@ uint8_t ctap2_make_credential(const uint8_t *request_data, size_t request_len,
                 break;
 
             case MC_PIN_PROTOCOL:
-                if (cbor_decode_uint(&decoder, (uint64_t*)&pin_protocol) != CBOR_OK) {
+                if (cbor_decode_uint(&decoder, (uint64_t *) &pin_protocol) != CBOR_OK) {
                     return CTAP2_ERR_INVALID_CBOR;
                 }
                 break;
@@ -242,7 +243,7 @@ uint8_t ctap2_make_credential(const uint8_t *request_data, size_t request_len,
     }
 
     /* Check PIN requirements */
-    bool pin_required = rk || uv;  /* PIN required for resident keys or when UV requested */
+    bool pin_required = rk || uv; /* PIN required for resident keys or when UV requested */
     bool pin_verified = false;
 
     if (pin_required) {
@@ -284,7 +285,7 @@ uint8_t ctap2_make_credential(const uint8_t *request_data, size_t request_len,
     }
 
     /* Hash RP ID */
-    crypto_sha256((const uint8_t *)rp_id, strlen(rp_id), rp_id_hash);
+    crypto_sha256((const uint8_t *) rp_id, strlen(rp_id), rp_id_hash);
 
     /* Request user presence */
     LOG_INFO("Waiting for user presence...");
@@ -298,7 +299,7 @@ uint8_t ctap2_make_credential(const uint8_t *request_data, size_t request_len,
     /* Generate key pair */
     uint8_t private_key[32];
     uint8_t public_key[64];
-    
+
     if (algorithm == COSE_ALG_ES256) {
         if (crypto_ecdsa_generate_keypair(private_key, public_key) != CRYPTO_OK) {
             return CTAP2_ERR_PROCESSING;
@@ -344,7 +345,8 @@ uint8_t ctap2_make_credential(const uint8_t *request_data, size_t request_len,
     /* Flags */
     uint8_t flags = CTAP2_AUTH_DATA_FLAG_UP | CTAP2_AUTH_DATA_FLAG_AT;
     /* Set UV flag if PIN was verified */
-    if (pin_verified) flags |= CTAP2_AUTH_DATA_FLAG_UV;
+    if (pin_verified)
+        flags |= CTAP2_AUTH_DATA_FLAG_UV;
     auth_data[auth_data_len++] = flags;
 
     /* Sign counter (4 bytes, big-endian) */
@@ -369,7 +371,7 @@ uint8_t ctap2_make_credential(const uint8_t *request_data, size_t request_len,
     /* Credential public key (COSE format) */
     cbor_encoder_t key_encoder;
     cbor_encoder_init(&key_encoder, &auth_data[auth_data_len], sizeof(auth_data) - auth_data_len);
-    
+
     if (algorithm == COSE_ALG_ES256) {
         cbor_encode_map_start(&key_encoder, 5);
         cbor_encode_int(&key_encoder, 1); /* kty */
@@ -377,13 +379,13 @@ uint8_t ctap2_make_credential(const uint8_t *request_data, size_t request_len,
         cbor_encode_int(&key_encoder, 3); /* alg */
         cbor_encode_int(&key_encoder, COSE_ALG_ES256);
         cbor_encode_int(&key_encoder, -1); /* crv */
-        cbor_encode_int(&key_encoder, 1); /* P-256 */
+        cbor_encode_int(&key_encoder, 1);  /* P-256 */
         cbor_encode_int(&key_encoder, -2); /* x */
         cbor_encode_bytes(&key_encoder, &public_key[0], 32);
         cbor_encode_int(&key_encoder, -3); /* y */
         cbor_encode_bytes(&key_encoder, &public_key[32], 32);
     }
-    
+
     auth_data_len += cbor_encoder_get_size(&key_encoder);
 
     /* Build attestation statement */
@@ -438,8 +440,8 @@ uint8_t ctap2_make_credential(const uint8_t *request_data, size_t request_len,
     return CTAP2_OK;
 }
 
-uint8_t ctap2_get_assertion(const uint8_t *request_data, size_t request_len,
-                             uint8_t *response_data, size_t *response_len)
+uint8_t ctap2_get_assertion(const uint8_t *request_data, size_t request_len, uint8_t *response_data,
+                            size_t *response_len)
 {
     LOG_INFO("GetAssertion command");
 
@@ -551,7 +553,7 @@ uint8_t ctap2_get_assertion(const uint8_t *request_data, size_t request_len,
                 break;
 
             case GA_PIN_PROTOCOL:
-                if (cbor_decode_uint(&decoder, (uint64_t*)&pin_protocol) != CBOR_OK) {
+                if (cbor_decode_uint(&decoder, (uint64_t *) &pin_protocol) != CBOR_OK) {
                     return CTAP2_ERR_INVALID_CBOR;
                 }
                 break;
@@ -568,7 +570,7 @@ uint8_t ctap2_get_assertion(const uint8_t *request_data, size_t request_len,
     }
 
     /* Hash RP ID */
-    crypto_sha256((const uint8_t *)rp_id, strlen(rp_id), rp_id_hash);
+    crypto_sha256((const uint8_t *) rp_id, strlen(rp_id), rp_id_hash);
 
     /* Find matching credential */
     storage_credential_t credential;
@@ -588,7 +590,8 @@ uint8_t ctap2_get_assertion(const uint8_t *request_data, size_t request_len,
         /* Resident key discovery */
         storage_credential_t credentials[10];
         size_t count = 0;
-        if (storage_find_credentials_by_rp(rp_id_hash, credentials, 10, &count) == STORAGE_OK && count > 0) {
+        if (storage_find_credentials_by_rp(rp_id_hash, credentials, 10, &count) == STORAGE_OK &&
+            count > 0) {
             memcpy(&credential, &credentials[0], sizeof(storage_credential_t));
             found = true;
         }
@@ -666,7 +669,8 @@ uint8_t ctap2_get_assertion(const uint8_t *request_data, size_t request_len,
     /* Flags */
     uint8_t flags = CTAP2_AUTH_DATA_FLAG_UP;
     /* Set UV flag if PIN was verified */
-    if (pin_verified) flags |= CTAP2_AUTH_DATA_FLAG_UV;
+    if (pin_verified)
+        flags |= CTAP2_AUTH_DATA_FLAG_UV;
     auth_data[auth_data_len++] = flags;
 
     /* Sign counter */
