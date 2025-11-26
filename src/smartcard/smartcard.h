@@ -9,8 +9,8 @@
 #ifndef SMARTCARD_H
 #define SMARTCARD_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,17 +43,18 @@ typedef struct {
 
 /**
  * @brief Register a smart card protocol
- * 
+ *
  * @param aid Application Identifier
  * @param aid_len Length of AID
  * @param protocol Protocol implementation
  * @return 0 on success, error code otherwise
  */
-int smartcard_register_protocol(const uint8_t *aid, size_t aid_len, const smartcard_protocol_t *protocol);
+int smartcard_register_protocol(const uint8_t *aid, size_t aid_len,
+                                const smartcard_protocol_t *protocol);
 
 /**
  * @brief Dispatch APDU to registered protocols
- * 
+ *
  * @param apdu APDU command
  * @param len Length of APDU
  * @param resp Response buffer

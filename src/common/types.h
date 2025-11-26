@@ -9,9 +9,9 @@
 #ifndef COMMON_TYPES_H
 #define COMMON_TYPES_H
 
-#include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

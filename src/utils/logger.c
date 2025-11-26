@@ -7,6 +7,7 @@
  */
 
 #include "logger.h"
+
 #include <stdarg.h>
 #include <string.h>
 
@@ -36,11 +37,21 @@ void logger_log(log_level_t level, const char *file, int line, const char *fmt, 
 
     const char *level_str;
     switch (level) {
-        case LOG_LEVEL_ERROR: level_str = "ERROR"; break;
-        case LOG_LEVEL_WARN:  level_str = "WARN "; break;
-        case LOG_LEVEL_INFO:  level_str = "INFO "; break;
-        case LOG_LEVEL_DEBUG: level_str = "DEBUG"; break;
-        default:              level_str = "UNKNOWN"; break;
+        case LOG_LEVEL_ERROR:
+            level_str = "ERROR";
+            break;
+        case LOG_LEVEL_WARN:
+            level_str = "WARN ";
+            break;
+        case LOG_LEVEL_INFO:
+            level_str = "INFO ";
+            break;
+        case LOG_LEVEL_DEBUG:
+            level_str = "DEBUG";
+            break;
+        default:
+            level_str = "UNKNOWN";
+            break;
     }
 
     /* Extract filename from path */

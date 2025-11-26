@@ -9,8 +9,8 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,17 +38,13 @@ log_level_t logger_get_level(void);
 void logger_log(log_level_t level, const char *file, int line, const char *fmt, ...);
 
 /* Logging macros with context */
-#define LOG_ERROR(fmt, ...) \
-    logger_log(LOG_LEVEL_ERROR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_ERROR(fmt, ...) logger_log(LOG_LEVEL_ERROR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
-#define LOG_WARN(fmt, ...) \
-    logger_log(LOG_LEVEL_WARN, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_WARN(fmt, ...) logger_log(LOG_LEVEL_WARN, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
-#define LOG_INFO(fmt, ...) \
-    logger_log(LOG_LEVEL_INFO, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...) logger_log(LOG_LEVEL_INFO, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
-#define LOG_DEBUG(fmt, ...) \
-    logger_log(LOG_LEVEL_DEBUG, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_DEBUG(fmt, ...) logger_log(LOG_LEVEL_DEBUG, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
 /* Context logging macros (for future use) */
 #define LOG_ERROR_CTX(ctx, fmt, ...) \

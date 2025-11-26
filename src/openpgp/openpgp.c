@@ -11,9 +11,9 @@
 #include <string.h>
 
 #include "crypto.h"
+#include "logger.h"
 #include "storage.h"
 #include "usb_ccid.h"
-#include "logger.h"
 
 /* Forward declarations from usb_ccid.h */
 typedef struct {
