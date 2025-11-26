@@ -107,6 +107,7 @@ extern "C" {
 #define CTAP2_EXT_HMAC_SECRET "hmac-secret"
 #define CTAP2_EXT_CRED_PROTECT "credProtect"
 #define CTAP2_EXT_LARGE_BLOBS "largeBlobKey"
+#define CTAP2_EXT_MIN_PIN_LENGTH "minPinLength"
 
 /**
  * @brief CTAP2 Request Structure
@@ -213,6 +214,18 @@ uint8_t ctap2_get_next_assertion(uint8_t *response_data, size_t *response_len);
  * @return CTAP2 status code
  */
 uint8_t ctap2_credential_management(const uint8_t *request_data, size_t request_len,
+                                    uint8_t *response_data, size_t *response_len);
+
+/**
+ * @brief Handle CTAP2 authenticator configuration command (0x0D)
+ *
+ * @param request_data Request data buffer
+ * @param request_len Request data length
+ * @param response_data Response data buffer
+ * @param response_len Pointer to response data length
+ * @return CTAP2 status code
+ */
+uint8_t ctap2_authenticator_config(const uint8_t *request_data, size_t request_len,
                                     uint8_t *response_data, size_t *response_len);
 
 #ifdef __cplusplus
