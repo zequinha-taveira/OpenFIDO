@@ -115,7 +115,7 @@ uint8_t ctap2_process_request(const ctap2_request_t *request, ctap2_response_t *
     return CTAP2_ERR_INVALID_COMMAND;
 }
 
-uint8_t ctap2_get_info(uint8_t * response_data, size_t * response_len)
+uint8_t ctap2_get_info(uint8_t *response_data, size_t *response_len)
 {
     cbor_encoder_t encoder;
     cbor_encoder_init(&encoder, response_data, CTAP2_MAX_MESSAGE_SIZE);
@@ -177,8 +177,8 @@ uint8_t ctap2_get_info(uint8_t * response_data, size_t * response_len)
     return CTAP2_OK;
 }
 
-uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len,
-                         uint8_t *response_data, size_t *response_len)
+uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len, uint8_t *response_data,
+                         size_t *response_len)
 {
     LOG_INFO("ClientPIN command");
 
@@ -371,7 +371,7 @@ uint8_t ctap2_reset(void)
     return CTAP2_OK;
 }
 
-uint8_t ctap2_get_next_assertion(uint8_t * response_data, size_t * response_len)
+uint8_t ctap2_get_next_assertion(uint8_t *response_data, size_t *response_len)
 {
     if (ctap2_state.pending_assertions == 0) {
         return CTAP2_ERR_NO_OPERATION_PENDING;
