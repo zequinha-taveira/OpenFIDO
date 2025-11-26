@@ -1,0 +1,53 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libmbedtls-dev
+    
+    - name: Create build directory
+      run: mkdir -p build
+    
+    - name: Compile crypto.c
+      run: |
+        gcc -c -Wall -Wextra -Werror -pedantic -std=c11 \
+          -I src/utils -I src/hal -I src/common \
+          -DUSE_MBEDTLS \
+          -o build/crypto.o \
+          src/crypto/crypto.c
+    
+    - name: Compile ctap2.c
+      run: |
+        gcc -c -Wall -Wextra -Werror -pedantic -std=c11 \
+          -I src/crypto -I src/storage -I src/utils \
+          -I src/hal -I src/common -I src/fido2/core \
+          -DUSE_MBEDTLS \
+          -o build/ctap2.o \
+          src/fido2/core/ctap2.c
+    
+    - name: Verify build artifacts
+      run: |
+        ls -lh build/
+        file build/crypto.o
+        file build/ctap2.o
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: compiled-objects
+        path: build/*.o
+        retention-days: 7
