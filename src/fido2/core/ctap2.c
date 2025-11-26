@@ -60,6 +60,36 @@
 #define GA_RESP_USER 0x04
 #define GA_RESP_NUM_CREDENTIALS 0x05
 
+/* Client PIN Request Keys */
+#define CP_KEY_PIN_PROTOCOL 0x01
+#define CP_KEY_SUBCOMMAND 0x02
+#define CP_KEY_KEY_AGREEMENT 0x03
+#define CP_KEY_PIN_AUTH 0x04
+#define CP_KEY_NEW_PIN_ENC 0x05
+#define CP_KEY_PIN_HASH_ENC 0x06
+
+/* Client PIN Subcommands */
+#define CP_SUBCMD_GET_RETRIES 0x01
+#define CP_SUBCMD_GET_KEY_AGREEMENT 0x02
+#define CP_SUBCMD_SET_PIN 0x03
+#define CP_SUBCMD_CHANGE_PIN 0x04
+#define CP_SUBCMD_GET_PIN_TOKEN 0x05
+
+/* Client PIN Response Keys */
+#define CP_RESP_KEY_AGREEMENT 0x01
+#define CP_RESP_PIN_TOKEN 0x02
+#define CP_RESP_RETRIES 0x03
+
+/* COSE Keys and Values */
+#define COSE_KEY_KTY 1
+#define COSE_KEY_ALG 3
+#define COSE_KEY_CRV -1
+#define COSE_KEY_X -2
+#define COSE_KEY_Y -3
+
+#define COSE_KTY_EC2 2
+#define COSE_CRV_P256 1
+
 /* AAGUID (Authenticator Attestation GUID) */
 static const uint8_t AAGUID[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -71,6 +101,11 @@ static struct {
     storage_credential_t assertion_credentials[10];
 } ctap2_state = {0};
 
+/**
+ * @brief Initialize the CTAP2 protocol handler.
+ *
+ * @return CTAP2_OK on success.
+ */
 uint8_t ctap2_init(void)
 {
     LOG_INFO("Initializing CTAP2 protocol handler");
@@ -81,6 +116,17 @@ uint8_t ctap2_init(void)
     return CTAP2_OK;
 }
 
+/* Forward declaration for the renamed function */
+uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len, uint8_t *response_data,
+                                size_t *response_len);
+
+/**
+ * @brief Process a CTAP2 request.
+ *
+ * @param request Pointer to the request structure.
+ * @param response Pointer to the response structure.
+ * @return CTAP2 status code.
+ */
 uint8_t ctap2_process_request(const ctap2_request_t *request, ctap2_response_t *response)
 {
     if (!ctap2_state.initialized) {
@@ -102,8 +148,8 @@ uint8_t ctap2_process_request(const ctap2_request_t *request, ctap2_response_t *
             return ctap2_get_info(response->data, &response->data_len);
 
         case CTAP2_CMD_CLIENT_PIN:
-            return ctap2_client_pin(request->data, request->data_len, response->data,
-                                    &response->data_len);
+            return ctap2_handle_client_pin(request->data, request->data_len, response->data,
+                                           &response->data_len);
 
         case CTAP2_CMD_RESET:
             return ctap2_reset();
@@ -115,6 +161,13 @@ uint8_t ctap2_process_request(const ctap2_request_t *request, ctap2_response_t *
     return CTAP2_ERR_INVALID_COMMAND;
 }
 
+/**
+ * @brief Handle the authenticatorGetInfo command.
+ *
+ * @param response_data Buffer to store the response.
+ * @param response_len Pointer to store the response length.
+ * @return CTAP2 status code.
+ */
 uint8_t ctap2_get_info(uint8_t *response_data, size_t *response_len)
 {
     cbor_encoder_t encoder;
@@ -177,8 +230,17 @@ uint8_t ctap2_get_info(uint8_t *response_data, size_t *response_len)
     return CTAP2_OK;
 }
 
-uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len, uint8_t *response_data,
-                         size_t *response_len)
+/**
+ * @brief Handle the clientPIN command.
+ *
+ * @param request_data Pointer to the request data.
+ * @param request_len Length of the request data.
+ * @param response_data Buffer to store the response.
+ * @param response_len Pointer to store the response length.
+ * @return CTAP2 status code.
+ */
+uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len, uint8_t *response_data,
+                                size_t *response_len)
 {
     LOG_INFO("ClientPIN command");
 
@@ -204,16 +266,16 @@ uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len, uint8_
         }
 
         switch (key) {
-            case 0x01: /* pinProtocol */
+            case CP_KEY_PIN_PROTOCOL:
                 cbor_skip_value(&decoder);
                 break;
-            case 0x02: /* subCommand */
+            case CP_KEY_SUBCOMMAND:
                 if (cbor_decode_uint(&decoder, &sub_command) != CBOR_OK) {
                     return CTAP2_ERR_INVALID_CBOR;
                 }
                 has_sub_command = true;
                 break;
-            case 0x05: /* newPinEnc */
+            case CP_KEY_NEW_PIN_ENC:
                 new_pin_enc_len = sizeof(new_pin_enc);
                 if (cbor_decode_bytes(&decoder, new_pin_enc, new_pin_enc_len) != CBOR_OK) {
                     return CTAP2_ERR_INVALID_CBOR;
@@ -233,34 +295,34 @@ uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len, uint8_
     cbor_encoder_init(&encoder, response_data, CTAP2_MAX_MESSAGE_SIZE);
 
     switch (sub_command) {
-        case 0x01: /* getRetries */
+        case CP_SUBCMD_GET_RETRIES:
             cbor_encode_map_start(&encoder, 1);
-            cbor_encode_uint(&encoder, 0x03); /* retries */
+            cbor_encode_uint(&encoder, CP_RESP_RETRIES);
             cbor_encode_uint(&encoder, storage_get_pin_retries());
             *response_len = cbor_encoder_get_size(&encoder);
             LOG_INFO("ClientPIN: GetRetries");
             return CTAP2_OK;
 
-        case 0x02: { /* getKeyAgreement */
+        case CP_SUBCMD_GET_KEY_AGREEMENT: {
             /* Generate ephemeral ECDH key pair */
             uint8_t private_key[32];
             uint8_t public_key[64];
             crypto_ecdsa_generate_keypair(private_key, public_key);
 
             cbor_encode_map_start(&encoder, 1);
-            cbor_encode_uint(&encoder, 0x01); /* keyAgreement */
+            cbor_encode_uint(&encoder, CP_RESP_KEY_AGREEMENT);
 
             /* Encode COSE_Key */
             cbor_encode_map_start(&encoder, 5);
-            cbor_encode_int(&encoder, 1); /* kty */
-            cbor_encode_int(&encoder, 2); /* EC2 */
-            cbor_encode_int(&encoder, 3); /* alg */
+            cbor_encode_int(&encoder, COSE_KEY_KTY);
+            cbor_encode_int(&encoder, COSE_KTY_EC2);
+            cbor_encode_int(&encoder, COSE_KEY_ALG);
             cbor_encode_int(&encoder, COSE_ALG_ES256);
-            cbor_encode_int(&encoder, -1); /* crv */
-            cbor_encode_int(&encoder, 1);  /* P-256 */
-            cbor_encode_int(&encoder, -2); /* x */
+            cbor_encode_int(&encoder, COSE_KEY_CRV);
+            cbor_encode_int(&encoder, COSE_CRV_P256);
+            cbor_encode_int(&encoder, COSE_KEY_X);
             cbor_encode_bytes(&encoder, &public_key[0], 32);
-            cbor_encode_int(&encoder, -3); /* y */
+            cbor_encode_int(&encoder, COSE_KEY_Y);
             cbor_encode_bytes(&encoder, &public_key[32], 32);
 
             *response_len = cbor_encoder_get_size(&encoder);
@@ -268,7 +330,7 @@ uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len, uint8_
             return CTAP2_OK;
         }
 
-        case 0x03: { /* setPIN */
+        case CP_SUBCMD_SET_PIN: {
             /* Set new PIN */
             if (storage_is_pin_set()) {
                 return CTAP2_ERR_PIN_INVALID;
@@ -293,7 +355,7 @@ uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len, uint8_
             return CTAP2_OK;
         }
 
-        case 0x04: { /* changePIN */
+        case CP_SUBCMD_CHANGE_PIN: {
             /* Change existing PIN */
             if (!storage_is_pin_set()) {
                 return CTAP2_ERR_PIN_NOT_SET;
@@ -315,7 +377,7 @@ uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len, uint8_
             return CTAP2_OK;
         }
 
-        case 0x05: { /* getPINToken */
+        case CP_SUBCMD_GET_PIN_TOKEN: {
             /* Get PIN token */
             if (!storage_is_pin_set()) {
                 return CTAP2_ERR_PIN_NOT_SET;
@@ -336,7 +398,7 @@ uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len, uint8_
             crypto_random_generate(pin_token, sizeof(pin_token));
 
             cbor_encode_map_start(&encoder, 1);
-            cbor_encode_uint(&encoder, 0x02); /* pinToken */
+            cbor_encode_uint(&encoder, CP_RESP_PIN_TOKEN);
             cbor_encode_bytes(&encoder, pin_token, sizeof(pin_token));
 
             *response_len = cbor_encoder_get_size(&encoder);
@@ -350,6 +412,11 @@ uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len, uint8_
     }
 }
 
+/**
+ * @brief Reset the authenticator.
+ *
+ * @return CTAP2 status code.
+ */
 uint8_t ctap2_reset(void)
 
 {
@@ -371,6 +438,13 @@ uint8_t ctap2_reset(void)
     return CTAP2_OK;
 }
 
+/**
+ * @brief Get the next assertion from the pending list.
+ *
+ * @param response_data Buffer to store the response.
+ * @param response_len Pointer to store the response length.
+ * @return CTAP2 status code.
+ */
 uint8_t ctap2_get_next_assertion(uint8_t *response_data, size_t *response_len)
 {
     if (ctap2_state.pending_assertions == 0) {
