@@ -7,14 +7,17 @@
  */
 
 #include "u2f.h"
-#include "logger.h"
-#include "crypto.h"
-#include "storage.h"
+
 #include <string.h>
+
+#include "crypto.h"
+#include "logger.h"
+#include "storage.h"
 
 #define U2F_VERSION_STRING "U2F_V2"
 
-uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8_t *response_data, size_t *response_len)
+uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8_t *response_data,
+                          size_t *response_len)
 {
     if (request_len < 4) {
         return U2F_SW_WRONG_DATA;
@@ -24,11 +27,11 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
     uint8_t ins = request_data[1];
     uint8_t p1 = request_data[2];
     uint8_t p2 = request_data[3];
-    
+
     /* Parse Lc and Data if present */
     size_t data_offset = 4;
     size_t data_len = 0;
-    
+
     if (request_len > 4) {
         /* Extended length encoding check */
         if (request_data[4] == 0 && request_len > 6) {
@@ -66,7 +69,7 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
             /* Generate key pair */
             uint8_t private_key[32];
             uint8_t public_key[64];
-            
+
             if (crypto_ecdsa_generate_keypair(private_key, public_key) != CRYPTO_OK) {
                 return U2F_SW_COMMAND_NOT_ALLOWED;
             }
@@ -87,36 +90,36 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
 
             /* Build registration response */
             size_t offset = 0;
-            
+
             /* Reserved byte */
             response_data[offset++] = 0x05;
-            
+
             /* Public key (65 bytes: 0x04 + X + Y) */
             response_data[offset++] = 0x04;
             memcpy(&response_data[offset], public_key, 64);
             offset += 64;
-            
+
             /* Key handle length */
             response_data[offset++] = STORAGE_CREDENTIAL_ID_LENGTH;
-            
+
             /* Key handle */
             memcpy(&response_data[offset], credential.id, STORAGE_CREDENTIAL_ID_LENGTH);
             offset += STORAGE_CREDENTIAL_ID_LENGTH;
-            
+
             /* Attestation certificate (self-signed, minimal) */
             /* For simplicity, we'll use a minimal self-signed cert */
             /* In production, this should be a proper X.509 certificate */
             uint8_t cert[] = {
                 0x30, 0x59, /* SEQUENCE, length 89 */
                 0x30, 0x13, /* SEQUENCE, length 19 (tbsCertificate minimal) */
-                0x06, 0x07, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01, /* OID ecPublicKey */
+                0x06, 0x07, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01,       /* OID ecPublicKey */
                 0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07, /* OID prime256v1 */
                 0x03, 0x42, 0x00, /* BIT STRING, length 66 */
-                0x04 /* Uncompressed point */
+                0x04              /* Uncompressed point */
             };
             memcpy(&response_data[offset], cert, sizeof(cert));
             offset += sizeof(cert);
-            
+
             /* Add public key to cert */
             memcpy(&response_data[offset], public_key, 64);
             offset += 64;
@@ -124,7 +127,7 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
             /* Signature over registration data */
             uint8_t sig_data[256];
             size_t sig_data_len = 0;
-            
+
             sig_data[sig_data_len++] = 0x00; /* Reserved byte */
             memcpy(&sig_data[sig_data_len], application, 32);
             sig_data_len += 32;
@@ -139,11 +142,11 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
             /* Hash and sign */
             uint8_t hash[32];
             crypto_sha256(sig_data, sig_data_len, hash);
-            
+
             uint8_t signature[64];
             uint8_t att_key[32];
             storage_get_attestation_key(att_key);
-            
+
             if (crypto_ecdsa_sign(att_key, hash, signature) != CRYPTO_OK) {
                 return U2F_SW_COMMAND_NOT_ALLOWED;
             }
@@ -164,12 +167,13 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
             *response_len = offset;
             memset(private_key, 0, sizeof(private_key));
             memset(att_key, 0, sizeof(att_key));
-            
+
             return U2F_SW_NO_ERROR;
         }
 
         case U2F_AUTHENTICATE: {
-            /* U2F Authenticate: challenge (32) + application (32) + key_handle_len (1) + key_handle */
+            /* U2F Authenticate: challenge (32) + application (32) + key_handle_len (1) + key_handle
+             */
             if (data_len < 65) {
                 return U2F_SW_WRONG_DATA;
             }
@@ -207,7 +211,7 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
             /* Build authentication data */
             uint8_t auth_data[256];
             size_t auth_data_len = 0;
-            
+
             auth_data[auth_data_len++] = 0x01; /* User presence */
             auth_data[auth_data_len++] = (counter >> 24) & 0xFF;
             auth_data[auth_data_len++] = (counter >> 16) & 0xFF;
@@ -217,7 +221,7 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
             /* Build signature data */
             uint8_t sig_data[256];
             size_t sig_data_len = 0;
-            
+
             memcpy(&sig_data[sig_data_len], application, 32);
             sig_data_len += 32;
             memcpy(&sig_data[sig_data_len], auth_data, auth_data_len);
@@ -228,7 +232,7 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
             /* Hash and sign */
             uint8_t hash[32];
             crypto_sha256(sig_data, sig_data_len, hash);
-            
+
             uint8_t signature[64];
             if (crypto_ecdsa_sign(credential.private_key, hash, signature) != CRYPTO_OK) {
                 return U2F_SW_COMMAND_NOT_ALLOWED;

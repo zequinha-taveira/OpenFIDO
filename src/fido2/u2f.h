@@ -9,8 +9,8 @@
 #ifndef U2F_H
 #define U2F_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,9 +22,9 @@ extern "C" {
 #define U2F_VERSION 0x03
 
 /* U2F Authentication Control Byte (P1) */
-#define U2F_AUTH_ENFORCE 0x03       /* Enforce user presence and sign */
-#define U2F_AUTH_CHECK_ONLY 0x07    /* Check only (don't sign) */
-#define U2F_AUTH_DONT_ENFORCE 0x08  /* Don't enforce user presence */
+#define U2F_AUTH_ENFORCE 0x03      /* Enforce user presence and sign */
+#define U2F_AUTH_CHECK_ONLY 0x07   /* Check only (don't sign) */
+#define U2F_AUTH_DONT_ENFORCE 0x08 /* Don't enforce user presence */
 
 /* U2F Status Words */
 #define U2F_SW_NO_ERROR 0x9000
@@ -56,7 +56,8 @@ typedef struct {
  * @param response_len Pointer to response length
  * @return U2F status word (SW)
  */
-uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8_t *response_data, size_t *response_len);
+uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8_t *response_data,
+                          size_t *response_len);
 
 #ifdef __cplusplus
 }

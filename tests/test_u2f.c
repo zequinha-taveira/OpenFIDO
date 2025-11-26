@@ -79,15 +79,15 @@ int test_u2f_register(void)
 
     /* Build Register request: CLA INS P1 P2 Lc Challenge(32) Application(32) */
     uint8_t request[69];
-    request[0] = 0x00; /* CLA */
+    request[0] = 0x00;         /* CLA */
     request[1] = U2F_REGISTER; /* INS */
-    request[2] = 0x00; /* P1 */
-    request[3] = 0x00; /* P2 */
-    request[4] = 64; /* Lc */
-    
+    request[2] = 0x00;         /* P1 */
+    request[3] = 0x00;         /* P2 */
+    request[4] = 64;           /* Lc */
+
     /* Challenge (32 bytes) */
     memset(&request[5], 0x01, 32);
-    
+
     /* Application (32 bytes) */
     memset(&request[37], 0x02, 32);
 
@@ -97,7 +97,7 @@ int test_u2f_register(void)
     uint16_t sw = u2f_process_apdu(request, sizeof(request), response, &response_len);
 
     TEST_ASSERT(sw == U2F_SW_NO_ERROR);
-    TEST_ASSERT(response_len > 66); /* At least: reserved(1) + pubkey(65) + handle_len(1) */
+    TEST_ASSERT(response_len > 66);   /* At least: reserved(1) + pubkey(65) + handle_len(1) */
     TEST_ASSERT(response[0] == 0x05); /* Reserved byte */
     TEST_ASSERT(response[1] == 0x04); /* Uncompressed public key */
 
@@ -109,23 +109,23 @@ int test_u2f_authenticate(void)
 {
     /* This test requires a registered credential first */
     /* For simplicity, we'll just test the error case with invalid key handle */
-    
+
     uint8_t request[102];
-    request[0] = 0x00; /* CLA */
+    request[0] = 0x00;             /* CLA */
     request[1] = U2F_AUTHENTICATE; /* INS */
     request[2] = U2F_AUTH_ENFORCE; /* P1 */
-    request[3] = 0x00; /* P2 */
-    request[4] = 97; /* Lc */
-    
+    request[3] = 0x00;             /* P2 */
+    request[4] = 97;               /* Lc */
+
     /* Challenge (32 bytes) */
     memset(&request[5], 0x01, 32);
-    
+
     /* Application (32 bytes) */
     memset(&request[37], 0x02, 32);
-    
+
     /* Key handle length */
     request[69] = 32;
-    
+
     /* Invalid key handle (32 bytes) */
     memset(&request[70], 0xFF, 32);
 

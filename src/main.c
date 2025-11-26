@@ -12,10 +12,10 @@
 #include "config.h"
 #include "crypto.h"
 #include "ctap2.h"
-#include "u2f.h"
 #include "hal.h"
 #include "logger.h"
 #include "storage.h"
+#include "u2f.h"
 #include "usb_hid.h"
 
 #define APP_VERSION "1.0.0"
@@ -129,7 +129,7 @@ static void main_loop(void)
                 /* Process U2F APDU */
                 size_t response_len = 0;
                 uint16_t sw = u2f_process_apdu(rx_buffer, bytes_received, tx_buffer, &response_len);
-                
+
                 /* Append SW to response */
                 tx_buffer[response_len++] = (sw >> 8) & 0xFF;
                 tx_buffer[response_len++] = sw & 0xFF;
@@ -140,7 +140,8 @@ static void main_loop(void)
                 LOG_WARN("Unknown or unsupported CTAPHID command: 0x%02X", cmd);
                 /* Send error response? Or just ignore? CTAPHID spec says send ERROR */
                 uint8_t err_payload[1] = {0x01}; /* INVALID_CMD */
-                /* We can't easily send CTAPHID ERROR from here without exposing more usb_hid internals */
+                /* We can't easily send CTAPHID ERROR from here without exposing more usb_hid
+                 * internals */
                 /* For now, just ignore */
             }
 

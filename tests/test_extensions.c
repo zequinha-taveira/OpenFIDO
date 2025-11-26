@@ -8,13 +8,13 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "ctap2.h"
-#include "crypto.h"
-#include "storage.h"
 #include "cbor.h"
+#include "crypto.h"
+#include "ctap2.h"
+#include "storage.h"
 
 #define TEST_ASSERT(condition)                                            \
     do {                                                                  \
@@ -31,7 +31,8 @@
     } while (0)
 
 /* Helper to find string in CBOR text array */
-static int cbor_array_contains(const uint8_t *data, size_t len, const char *str) {
+static int cbor_array_contains(const uint8_t *data, size_t len, const char *str)
+{
     /* Simplified check: just look for the string in the raw data */
     /* In a real test we should parse CBOR, but for now this is a quick check */
     /* Note: CBOR text string is encoded as: 0x60+len(0-23) or 0x78+len(1byte) followed by bytes */
@@ -55,7 +56,7 @@ int test_getinfo_extensions(void)
     /* Check for extension strings */
     TEST_ASSERT(cbor_array_contains(response, response_len, "hmac-secret"));
     TEST_ASSERT(cbor_array_contains(response, response_len, "credProtect"));
-    
+
     /* Check for EdDSA algorithm (alg: -8) */
     /* In CBOR, -8 is encoded as 0x27 (negative integer -1 - 7) */
     /* We can search for the byte sequence representing the map entry */
@@ -80,17 +81,19 @@ int test_make_credential_ed25519(void)
     /* For simplicity, we'll mock the request data structure or use a helper if available */
     /* Since we don't have a CBOR builder in the test, we'll skip complex construction */
     /* and rely on the fact that we modified the code to handle it. */
-    
+
     /* However, we can test the crypto function directly */
     uint8_t private_key[32];
     uint8_t public_key[32];
-    
+
     TEST_ASSERT(crypto_init() == CRYPTO_OK);
     TEST_ASSERT(crypto_ed25519_generate_keypair(private_key, public_key) == CRYPTO_OK);
-    
+
     /* Verify keys are not zero */
     int all_zero = 1;
-    for(int i=0; i<32; i++) if(public_key[i] != 0) all_zero = 0;
+    for (int i = 0; i < 32; i++)
+        if (public_key[i] != 0)
+            all_zero = 0;
     TEST_ASSERT(all_zero == 0);
 
     /* Sign and Verify */
@@ -106,10 +109,10 @@ int main(void)
 {
     int failures = 0;
     printf("\n=== Running Extension Tests ===\n");
-    
+
     failures += test_getinfo_extensions();
     failures += test_make_credential_ed25519();
-    
+
     printf("=== Extension Tests: %d failures ===\n\n", failures);
     return failures;
 }

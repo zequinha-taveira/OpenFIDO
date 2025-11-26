@@ -132,127 +132,126 @@ uint8_t ctap2_get_info(uint8_t *response_data, size_t *response_len)
     cbor_encode_text(&encoder, "FIDO_2_0", 8);
     cbor_encode_text(&encoder, "U2F_V2", 6);
 
-            cbor_encode_int(&encoder, -2); /* x */
-            cbor_encode_bytes(&encoder, &public_key[0], 32);
-            cbor_encode_int(&encoder, -3); /* y */
-            cbor_encode_bytes(&encoder, &public_key[32], 32);
+    cbor_encode_int(&encoder, -2); /* x */
+    cbor_encode_bytes(&encoder, &public_key[0], 32);
+    cbor_encode_int(&encoder, -3); /* y */
+    cbor_encode_bytes(&encoder, &public_key[32], 32);
 
-            *response_len = cbor_encoder_get_size(&encoder);
-            LOG_INFO("ClientPIN: GetKeyAgreement");
-            return CTAP2_OK;
-        }
-
-        case PIN_SET_PIN: {
-            /* Set new PIN */
-            if (storage_is_pin_set()) {
-                return CTAP2_ERR_PIN_INVALID;
-            }
-
-            /* In production, decrypt newPinEnc using shared secret */
-            /* For now, simplified implementation */
-
-            /* Verify PIN length (should be decrypted PIN) */
-            if (new_pin_enc_len < STORAGE_PIN_MIN_LENGTH ||
-                new_pin_enc_len > STORAGE_PIN_MAX_LENGTH) {
-                return CTAP2_ERR_PIN_POLICY_VIOLATION;
-            }
-
-            /* Set PIN */
-            if (storage_set_pin(new_pin_enc, new_pin_enc_len) != STORAGE_OK) {
-                return CTAP2_ERR_PROCESSING;
-            }
-
-            *response_len = 0;
-            LOG_INFO("ClientPIN: SetPIN");
-            return CTAP2_OK;
-        }
-
-        case PIN_CHANGE_PIN: {
-            /* Change existing PIN */
-            if (!storage_is_pin_set()) {
-                return CTAP2_ERR_PIN_NOT_SET;
-            }
-
-            /* In production: */
-            /* 1. Decrypt pinHashEnc using shared secret */
-            /* 2. Verify current PIN */
-            /* 3. Decrypt newPinEnc */
-            /* 4. Set new PIN */
-
-            /* Simplified implementation */
-            if (storage_set_pin(new_pin_enc, new_pin_enc_len) != STORAGE_OK) {
-                return CTAP2_ERR_PROCESSING;
-            }
-
-            *response_len = 0;
-            LOG_INFO("ClientPIN: ChangePIN");
-            return CTAP2_OK;
-        }
-
-        case PIN_GET_PIN_TOKEN: {
-            /* Get PIN token */
-            if (!storage_is_pin_set()) {
-                return CTAP2_ERR_PIN_NOT_SET;
-            }
-
-            if (storage_is_pin_blocked()) {
-                return CTAP2_ERR_PIN_BLOCKED;
-            }
-
-            /* In production: */
-            /* 1. Decrypt pinHashEnc using shared secret */
-            /* 2. Verify PIN */
-            /* 3. Generate PIN token */
-            /* 4. Encrypt PIN token with shared secret */
-
-            /* Simplified: return dummy encrypted token */
-            uint8_t pin_token[16];
-            crypto_random_generate(pin_token, sizeof(pin_token));
-
-            cbor_encode_map_start(&encoder, 1);
-            cbor_encode_uint(&encoder, 0x02); /* pinToken */
-            cbor_encode_bytes(&encoder, pin_token, sizeof(pin_token));
-
-            *response_len = cbor_encoder_get_size(&encoder);
-            LOG_INFO("ClientPIN: GetPINToken");
-            return CTAP2_OK;
-        }
-
-        default:
-            LOG_WARN("ClientPIN: Unknown subcommand %llu", sub_command);
-            return CTAP2_ERR_INVALID_SUBCOMMAND;
-    }
+    *response_len = cbor_encoder_get_size(&encoder);
+    LOG_INFO("ClientPIN: GetKeyAgreement");
+    return CTAP2_OK;
 }
 
-uint8_t ctap2_reset(void)
-{
-    LOG_INFO("Performing authenticator reset");
-
-    /* Wait for user presence within 10 seconds of power-up */
-    if (!hal_button_wait_press(10000)) {
-        return CTAP2_ERR_USER_ACTION_TIMEOUT;
+case PIN_SET_PIN: {
+    /* Set new PIN */
+    if (storage_is_pin_set()) {
+        return CTAP2_ERR_PIN_INVALID;
     }
 
-    /* Format storage */
-    if (storage_format() != STORAGE_OK) {
+    /* In production, decrypt newPinEnc using shared secret */
+    /* For now, simplified implementation */
+
+    /* Verify PIN length (should be decrypted PIN) */
+    if (new_pin_enc_len < STORAGE_PIN_MIN_LENGTH || new_pin_enc_len > STORAGE_PIN_MAX_LENGTH) {
+        return CTAP2_ERR_PIN_POLICY_VIOLATION;
+    }
+
+    /* Set PIN */
+    if (storage_set_pin(new_pin_enc, new_pin_enc_len) != STORAGE_OK) {
         return CTAP2_ERR_PROCESSING;
     }
 
-    ctap2_state.pending_assertions = 0;
-
-    LOG_INFO("Reset completed successfully");
+    *response_len = 0;
+    LOG_INFO("ClientPIN: SetPIN");
     return CTAP2_OK;
 }
 
-uint8_t ctap2_get_next_assertion(uint8_t *response_data, size_t *response_len)
-{
-    if (ctap2_state.pending_assertions == 0) {
-        return CTAP2_ERR_NO_OPERATION_PENDING;
+case PIN_CHANGE_PIN: {
+    /* Change existing PIN */
+    if (!storage_is_pin_set()) {
+        return CTAP2_ERR_PIN_NOT_SET;
     }
 
-    /* Return next assertion from pending list */
-    ctap2_state.pending_assertions--;
+    /* In production: */
+    /* 1. Decrypt pinHashEnc using shared secret */
+    /* 2. Verify current PIN */
+    /* 3. Decrypt newPinEnc */
+    /* 4. Set new PIN */
 
-    LOG_INFO("GetNextAssertion: %d remaining", ctap2_state.pending_assertions);
+    /* Simplified implementation */
+    if (storage_set_pin(new_pin_enc, new_pin_enc_len) != STORAGE_OK) {
+        return CTAP2_ERR_PROCESSING;
+    }
+
+    *response_len = 0;
+    LOG_INFO("ClientPIN: ChangePIN");
     return CTAP2_OK;
 }
+
+case PIN_GET_PIN_TOKEN: {
+    /* Get PIN token */
+    if (!storage_is_pin_set()) {
+        return CTAP2_ERR_PIN_NOT_SET;
+    }
+
+    if (storage_is_pin_blocked()) {
+        return CTAP2_ERR_PIN_BLOCKED;
+    }
+
+    /* In production: */
+    /* 1. Decrypt pinHashEnc using shared secret */
+    /* 2. Verify PIN */
+    /* 3. Generate PIN token */
+    /* 4. Encrypt PIN token with shared secret */
+
+    /* Simplified: return dummy encrypted token */
+    uint8_t pin_token[16];
+    crypto_random_generate(pin_token, sizeof(pin_token));
+
+    cbor_encode_map_start(&encoder, 1);
+    cbor_encode_uint(&encoder, 0x02); /* pinToken */
+    cbor_encode_bytes(&encoder, pin_token, sizeof(pin_token));
+
+    *response_len = cbor_encoder_get_size(&encoder);
+    LOG_INFO("ClientPIN: GetPINToken");
+    return CTAP2_OK;
+}
+
+default:
+    LOG_WARN("ClientPIN: Unknown subcommand %llu", sub_command);
+    return CTAP2_ERR_INVALID_SUBCOMMAND;
+    }
+    }
+
+    uint8_t ctap2_reset(void)
+    {
+        LOG_INFO("Performing authenticator reset");
+
+        /* Wait for user presence within 10 seconds of power-up */
+        if (!hal_button_wait_press(10000)) {
+            return CTAP2_ERR_USER_ACTION_TIMEOUT;
+        }
+
+        /* Format storage */
+        if (storage_format() != STORAGE_OK) {
+            return CTAP2_ERR_PROCESSING;
+        }
+
+        ctap2_state.pending_assertions = 0;
+
+        LOG_INFO("Reset completed successfully");
+        return CTAP2_OK;
+    }
+
+    uint8_t ctap2_get_next_assertion(uint8_t *response_data, size_t *response_len)
+    {
+        if (ctap2_state.pending_assertions == 0) {
+            return CTAP2_ERR_NO_OPERATION_PENDING;
+        }
+
+        /* Return next assertion from pending list */
+        ctap2_state.pending_assertions--;
+
+        LOG_INFO("GetNextAssertion: %d remaining", ctap2_state.pending_assertions);
+        return CTAP2_OK;
+    }
