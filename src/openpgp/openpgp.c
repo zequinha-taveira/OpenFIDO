@@ -10,9 +10,9 @@
 
 #include <string.h>
 
-#include "../usb/usb_ccid.h"
 #include "../crypto/crypto.h"
 #include "../storage/storage.h"
+#include "../usb/usb_ccid.h"
 #include "../utils/logger.h"
 
 /* Forward declarations from usb_ccid.h */
@@ -39,7 +39,8 @@ static openpgp_key_slot_t key_slots[3];
 
 /* Default PINs */
 static const uint8_t default_pin_user[] = {0x31, 0x32, 0x33, 0x34, 0x35, 0x36}; /* "123456" */
-static const uint8_t default_pin_admin[] = {0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38}; /* "12345678" */
+static const uint8_t default_pin_admin[] = {0x31, 0x32, 0x33, 0x34,
+                                            0x35, 0x36, 0x37, 0x38}; /* "12345678" */
 
 /**
  * @brief Build status word response
@@ -83,9 +84,8 @@ static int handle_verify(const apdu_command_t *cmd, apdu_response_t *resp)
     } else if (ret == -2) {
         set_response_sw(resp, OPENPGP_SW_AUTH_BLOCKED);
     } else {
-        uint8_t retries = (pin_ref == OPENPGP_PIN_USER) ?
-                          openpgp_state.pin_user_retries :
-                          openpgp_state.pin_admin_retries;
+        uint8_t retries = (pin_ref == OPENPGP_PIN_USER) ? openpgp_state.pin_user_retries
+                                                        : openpgp_state.pin_admin_retries;
         set_response_sw(resp, OPENPGP_SW_VERIFY_FAIL | retries);
     }
 
@@ -196,8 +196,7 @@ static int handle_generate_asymmetric(const apdu_command_t *cmd, apdu_response_t
     uint16_t key_size = 256;
 
     size_t public_key_len = 0;
-    int ret = openpgp_generate_key(key_ref, algorithm, key_size,
-                                   resp->data, &public_key_len);
+    int ret = openpgp_generate_key(key_ref, algorithm, key_size, resp->data, &public_key_len);
 
     if (ret == 0) {
         resp->len = public_key_len;
@@ -357,8 +356,7 @@ int openpgp_init(void)
     openpgp_state.sex = '9'; /* Not announced */
 
     /* Register with CCID */
-    usb_ccid_register_app((const uint8_t *) OPENPGP_AID, OPENPGP_AID_LEN,
-                          openpgp_handle_apdu);
+    usb_ccid_register_app((const uint8_t *) OPENPGP_AID, OPENPGP_AID_LEN, openpgp_handle_apdu);
 
     LOG_INFO("OpenPGP initialized successfully");
     return 0;
@@ -376,42 +374,42 @@ int openpgp_handle_apdu(const void *cmd_ptr, void *resp_ptr)
         return 0;
     }
 
-    LOG_DEBUG("OpenPGP: APDU INS=0x%02X P1=0x%02X P2=0x%02X Lc=%d",
-              cmd->ins, cmd->p1, cmd->p2, cmd->lc);
+    LOG_DEBUG("OpenPGP: APDU INS=0x%02X P1=0x%02X P2=0x%02X Lc=%d", cmd->ins, cmd->p1, cmd->p2,
+              cmd->lc);
 
     switch (cmd->ins) {
-    case OPENPGP_INS_VERIFY:
-        return handle_verify(cmd, resp);
+        case OPENPGP_INS_VERIFY:
+            return handle_verify(cmd, resp);
 
-    case OPENPGP_INS_CHANGE_REFERENCE:
-        return handle_change_reference(cmd, resp);
+        case OPENPGP_INS_CHANGE_REFERENCE:
+            return handle_change_reference(cmd, resp);
 
-    case OPENPGP_INS_GET_DATA:
-        return handle_get_data(cmd, resp);
+        case OPENPGP_INS_GET_DATA:
+            return handle_get_data(cmd, resp);
 
-    case OPENPGP_INS_PUT_DATA:
-        return handle_put_data(cmd, resp);
+        case OPENPGP_INS_PUT_DATA:
+            return handle_put_data(cmd, resp);
 
-    case OPENPGP_INS_GENERATE_ASYMMETRIC:
-        return handle_generate_asymmetric(cmd, resp);
+        case OPENPGP_INS_GENERATE_ASYMMETRIC:
+            return handle_generate_asymmetric(cmd, resp);
 
-    case OPENPGP_INS_PSO:
-        return handle_pso(cmd, resp);
+        case OPENPGP_INS_PSO:
+            return handle_pso(cmd, resp);
 
-    case OPENPGP_INS_INTERNAL_AUTH:
-        return handle_internal_authenticate(cmd, resp);
+        case OPENPGP_INS_INTERNAL_AUTH:
+            return handle_internal_authenticate(cmd, resp);
 
-    case OPENPGP_INS_TERMINATE:
-        return handle_terminate(cmd, resp);
+        case OPENPGP_INS_TERMINATE:
+            return handle_terminate(cmd, resp);
 
-    case OPENPGP_INS_ACTIVATE:
-        return handle_activate(cmd, resp);
+        case OPENPGP_INS_ACTIVATE:
+            return handle_activate(cmd, resp);
 
-    default:
-        LOG_WARN("OpenPGP: Unsupported instruction 0x%02X", cmd->ins);
-        set_response_sw(resp, OPENPGP_SW_INS_NOT_SUPPORTED);
-        resp->len = 0;
-        return 0;
+        default:
+            LOG_WARN("OpenPGP: Unsupported instruction 0x%02X", cmd->ins);
+            set_response_sw(resp, OPENPGP_SW_INS_NOT_SUPPORTED);
+            resp->len = 0;
+            return 0;
     }
 }
 
@@ -492,8 +490,8 @@ int openpgp_change_pin(uint8_t pin_ref, const uint8_t *old_pin, size_t old_len,
     return -1;
 }
 
-int openpgp_generate_key(uint8_t key_ref, uint8_t algorithm, uint16_t key_size,
-                         uint8_t *public_key, size_t *public_key_len)
+int openpgp_generate_key(uint8_t key_ref, uint8_t algorithm, uint16_t key_size, uint8_t *public_key,
+                         size_t *public_key_len)
 {
     /* Find key slot */
     openpgp_key_slot_t *slot = NULL;
@@ -521,24 +519,22 @@ int openpgp_generate_key(uint8_t key_ref, uint8_t algorithm, uint16_t key_size,
     return 0;
 }
 
-int openpgp_sign(const uint8_t *data, size_t data_len,
-                 uint8_t *signature, size_t *sig_len)
+int openpgp_sign(const uint8_t *data, size_t data_len, uint8_t *signature, size_t *sig_len)
 {
     /* TODO: Implement signature generation */
     *sig_len = 0;
     return -1;
 }
 
-int openpgp_decipher(const uint8_t *data, size_t data_len,
-                     uint8_t *plaintext, size_t *plain_len)
+int openpgp_decipher(const uint8_t *data, size_t data_len, uint8_t *plaintext, size_t *plain_len)
 {
     /* TODO: Implement decryption */
     *plain_len = 0;
     return -1;
 }
 
-int openpgp_authenticate(const uint8_t *challenge, size_t challenge_len,
-                         uint8_t *response, size_t *resp_len)
+int openpgp_authenticate(const uint8_t *challenge, size_t challenge_len, uint8_t *response,
+                         size_t *resp_len)
 {
     /* TODO: Implement authentication */
     *resp_len = 0;
@@ -548,72 +544,72 @@ int openpgp_authenticate(const uint8_t *challenge, size_t challenge_len,
 int openpgp_get_data(uint16_t tag, uint8_t *data, size_t *data_len)
 {
     switch (tag) {
-    case OPENPGP_DO_NAME:
-        *data_len = strlen(openpgp_state.name);
-        memcpy(data, openpgp_state.name, *data_len);
-        return 0;
+        case OPENPGP_DO_NAME:
+            *data_len = strlen(openpgp_state.name);
+            memcpy(data, openpgp_state.name, *data_len);
+            return 0;
 
-    case OPENPGP_DO_LANG:
-        *data_len = strlen(openpgp_state.language);
-        memcpy(data, openpgp_state.language, *data_len);
-        return 0;
+        case OPENPGP_DO_LANG:
+            *data_len = strlen(openpgp_state.language);
+            memcpy(data, openpgp_state.language, *data_len);
+            return 0;
 
-    case OPENPGP_DO_SEX:
-        data[0] = openpgp_state.sex;
-        *data_len = 1;
-        return 0;
+        case OPENPGP_DO_SEX:
+            data[0] = openpgp_state.sex;
+            *data_len = 1;
+            return 0;
 
-    case OPENPGP_DO_URL:
-        *data_len = strlen(openpgp_state.url);
-        memcpy(data, openpgp_state.url, *data_len);
-        return 0;
+        case OPENPGP_DO_URL:
+            *data_len = strlen(openpgp_state.url);
+            memcpy(data, openpgp_state.url, *data_len);
+            return 0;
 
-    default:
-        *data_len = 0;
-        return -1;
+        default:
+            *data_len = 0;
+            return -1;
     }
 }
 
 int openpgp_put_data(uint16_t tag, const uint8_t *data, size_t data_len)
 {
     switch (tag) {
-    case OPENPGP_DO_NAME:
-        if (data_len > OPENPGP_NAME_MAX_LENGTH) {
-            return -1;
-        }
-        memcpy(openpgp_state.name, data, data_len);
-        openpgp_state.name[data_len] = '\0';
-        LOG_INFO("OpenPGP: Set cardholder name");
-        return 0;
+        case OPENPGP_DO_NAME:
+            if (data_len > OPENPGP_NAME_MAX_LENGTH) {
+                return -1;
+            }
+            memcpy(openpgp_state.name, data, data_len);
+            openpgp_state.name[data_len] = '\0';
+            LOG_INFO("OpenPGP: Set cardholder name");
+            return 0;
 
-    case OPENPGP_DO_LANG:
-        if (data_len > OPENPGP_LANG_MAX_LENGTH) {
-            return -1;
-        }
-        memcpy(openpgp_state.language, data, data_len);
-        openpgp_state.language[data_len] = '\0';
-        LOG_INFO("OpenPGP: Set language");
-        return 0;
+        case OPENPGP_DO_LANG:
+            if (data_len > OPENPGP_LANG_MAX_LENGTH) {
+                return -1;
+            }
+            memcpy(openpgp_state.language, data, data_len);
+            openpgp_state.language[data_len] = '\0';
+            LOG_INFO("OpenPGP: Set language");
+            return 0;
 
-    case OPENPGP_DO_SEX:
-        if (data_len != 1) {
-            return -1;
-        }
-        openpgp_state.sex = data[0];
-        LOG_INFO("OpenPGP: Set sex");
-        return 0;
+        case OPENPGP_DO_SEX:
+            if (data_len != 1) {
+                return -1;
+            }
+            openpgp_state.sex = data[0];
+            LOG_INFO("OpenPGP: Set sex");
+            return 0;
 
-    case OPENPGP_DO_URL:
-        if (data_len > OPENPGP_URL_MAX_LENGTH) {
-            return -1;
-        }
-        memcpy(openpgp_state.url, data, data_len);
-        openpgp_state.url[data_len] = '\0';
-        LOG_INFO("OpenPGP: Set URL");
-        return 0;
+        case OPENPGP_DO_URL:
+            if (data_len > OPENPGP_URL_MAX_LENGTH) {
+                return -1;
+            }
+            memcpy(openpgp_state.url, data, data_len);
+            openpgp_state.url[data_len] = '\0';
+            LOG_INFO("OpenPGP: Set URL");
+            return 0;
 
-    default:
-        return -1;
+        default:
+            return -1;
     }
 }
 

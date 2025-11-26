@@ -14,13 +14,13 @@
 #include "ctap2.h"
 #include "hal.h"
 #include "logger.h"
+#include "openpgp.h"
+#include "piv.h"
 #include "storage.h"
 #include "u2f.h"
-#include "usb_hid.h"
 #include "usb_ccid.h"
+#include "usb_hid.h"
 #include "ykman.h"
-#include "piv.h"
-#include "openpgp.h"
 
 #define APP_VERSION "1.0.0"
 

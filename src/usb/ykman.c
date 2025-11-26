@@ -10,8 +10,8 @@
 
 #include <string.h>
 
-#include "usb_ccid.h"
 #include "../utils/logger.h"
+#include "usb_ccid.h"
 
 /* Forward declarations from usb_ccid.h */
 typedef struct {
@@ -189,13 +189,12 @@ int ykman_init(void)
     memset(&device_config, 0, sizeof(device_config));
 
     /* Set device capabilities */
-    device_config.capabilities = YKMAN_CAP_FIDO2 | YKMAN_CAP_U2F |
-                                 YKMAN_CAP_PIV | YKMAN_CAP_OPENPGP |
-                                 YKMAN_CAP_OATH | YKMAN_CAP_OTP;
+    device_config.capabilities = YKMAN_CAP_FIDO2 | YKMAN_CAP_U2F | YKMAN_CAP_PIV |
+                                 YKMAN_CAP_OPENPGP | YKMAN_CAP_OATH | YKMAN_CAP_OTP;
 
     /* Set supported and enabled USB interfaces */
-    device_config.usb_supported = YKMAN_USB_MODE_FIDO | YKMAN_USB_MODE_FIDO2 |
-                                  YKMAN_USB_MODE_CCID | YKMAN_USB_MODE_OTP;
+    device_config.usb_supported =
+        YKMAN_USB_MODE_FIDO | YKMAN_USB_MODE_FIDO2 | YKMAN_USB_MODE_CCID | YKMAN_USB_MODE_OTP;
     device_config.usb_enabled = device_config.usb_supported;
 
     /* Set device info */
@@ -206,8 +205,7 @@ int ykman_init(void)
     device_config.version_patch = 3;
 
     /* Register with CCID */
-    usb_ccid_register_app((const uint8_t *) YKMAN_AID, YKMAN_AID_LEN,
-                          ykman_handle_apdu);
+    usb_ccid_register_app((const uint8_t *) YKMAN_AID, YKMAN_AID_LEN, ykman_handle_apdu);
 
     LOG_INFO("Yubico Management initialized successfully");
     return 0;
@@ -218,30 +216,30 @@ int ykman_handle_apdu(const void *cmd_ptr, void *resp_ptr)
     const apdu_command_t *cmd = (const apdu_command_t *) cmd_ptr;
     apdu_response_t *resp = (apdu_response_t *) resp_ptr;
 
-    LOG_DEBUG("YKMAN: APDU INS=0x%02X P1=0x%02X P2=0x%02X Lc=%d",
-              cmd->ins, cmd->p1, cmd->p2, cmd->lc);
+    LOG_DEBUG("YKMAN: APDU INS=0x%02X P1=0x%02X P2=0x%02X Lc=%d", cmd->ins, cmd->p1, cmd->p2,
+              cmd->lc);
 
     switch (cmd->ins) {
-    case YKMAN_INS_GET_DEVICE_INFO:
-        return handle_get_device_info(cmd, resp);
+        case YKMAN_INS_GET_DEVICE_INFO:
+            return handle_get_device_info(cmd, resp);
 
-    case YKMAN_INS_GET_SERIAL:
-        return handle_get_serial(cmd, resp);
+        case YKMAN_INS_GET_SERIAL:
+            return handle_get_serial(cmd, resp);
 
-    case YKMAN_INS_SET_MODE:
-        return handle_set_mode(cmd, resp);
+        case YKMAN_INS_SET_MODE:
+            return handle_set_mode(cmd, resp);
 
-    case YKMAN_INS_READ_CONFIG:
-        return handle_read_config(cmd, resp);
+        case YKMAN_INS_READ_CONFIG:
+            return handle_read_config(cmd, resp);
 
-    case YKMAN_INS_WRITE_CONFIG:
-        return handle_write_config(cmd, resp);
+        case YKMAN_INS_WRITE_CONFIG:
+            return handle_write_config(cmd, resp);
 
-    default:
-        LOG_WARN("YKMAN: Unsupported instruction 0x%02X", cmd->ins);
-        set_response_sw(resp, 0x6D00);
-        resp->len = 0;
-        return 0;
+        default:
+            LOG_WARN("YKMAN: Unsupported instruction 0x%02X", cmd->ins);
+            set_response_sw(resp, 0x6D00);
+            resp->len = 0;
+            return 0;
     }
 }
 

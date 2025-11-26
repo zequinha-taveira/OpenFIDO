@@ -10,9 +10,9 @@
 
 #include <string.h>
 
-#include "../usb/usb_ccid.h"
 #include "../crypto/crypto.h"
 #include "../storage/storage.h"
+#include "../usb/usb_ccid.h"
 #include "../utils/logger.h"
 
 /* Forward declarations from usb_ccid.h */
@@ -85,8 +85,7 @@ static int handle_verify(const apdu_command_t *cmd, apdu_response_t *resp)
     }
 
     /* Compare PIN */
-    if (cmd->lc == piv_state.pin_len &&
-        memcmp(cmd->data, piv_state.pin, piv_state.pin_len) == 0) {
+    if (cmd->lc == piv_state.pin_len && memcmp(cmd->data, piv_state.pin, piv_state.pin_len) == 0) {
         /* PIN correct */
         piv_state.pin_verified = true;
         piv_state.pin_retries = PIV_PIN_MAX_RETRIES;
@@ -97,8 +96,7 @@ static int handle_verify(const apdu_command_t *cmd, apdu_response_t *resp)
         piv_state.pin_verified = false;
         piv_state.pin_retries--;
         set_response_sw(resp, PIV_SW_VERIFY_FAIL | piv_state.pin_retries);
-        LOG_WARN("PIV: PIN verification failed, %d retries remaining",
-                 piv_state.pin_retries);
+        LOG_WARN("PIV: PIN verification failed, %d retries remaining", piv_state.pin_retries);
     }
 
     resp->len = 0;
@@ -138,8 +136,7 @@ static int handle_change_reference(const apdu_command_t *cmd, apdu_response_t *r
     const uint8_t *new_pin = &cmd->data[2 + old_len];
 
     /* Verify old PIN */
-    if (old_len != piv_state.pin_len ||
-        memcmp(old_pin, piv_state.pin, old_len) != 0) {
+    if (old_len != piv_state.pin_len || memcmp(old_pin, piv_state.pin, old_len) != 0) {
         set_response_sw(resp, PIV_SW_SECURITY_STATUS);
         resp->len = 0;
         return 0;
@@ -286,8 +283,7 @@ static int handle_generate_asymmetric(const apdu_command_t *cmd, apdu_response_t
         }
     }
 
-    LOG_INFO("PIV: Generate key pair for slot 0x%02X, algorithm 0x%02X",
-             key_ref, algorithm);
+    LOG_INFO("PIV: Generate key pair for slot 0x%02X, algorithm 0x%02X", key_ref, algorithm);
 
     /* Generate key */
     size_t public_key_len = 0;
@@ -346,36 +342,36 @@ int piv_handle_apdu(const void *cmd_ptr, void *resp_ptr)
     const apdu_command_t *cmd = (const apdu_command_t *) cmd_ptr;
     apdu_response_t *resp = (apdu_response_t *) resp_ptr;
 
-    LOG_DEBUG("PIV: APDU INS=0x%02X P1=0x%02X P2=0x%02X Lc=%d",
-              cmd->ins, cmd->p1, cmd->p2, cmd->lc);
+    LOG_DEBUG("PIV: APDU INS=0x%02X P1=0x%02X P2=0x%02X Lc=%d", cmd->ins, cmd->p1, cmd->p2,
+              cmd->lc);
 
     switch (cmd->ins) {
-    case PIV_INS_VERIFY:
-        return handle_verify(cmd, resp);
+        case PIV_INS_VERIFY:
+            return handle_verify(cmd, resp);
 
-    case PIV_INS_CHANGE_REFERENCE:
-        return handle_change_reference(cmd, resp);
+        case PIV_INS_CHANGE_REFERENCE:
+            return handle_change_reference(cmd, resp);
 
-    case PIV_INS_GET_DATA:
-        return handle_get_data(cmd, resp);
+        case PIV_INS_GET_DATA:
+            return handle_get_data(cmd, resp);
 
-    case PIV_INS_PUT_DATA:
-        return handle_put_data(cmd, resp);
+        case PIV_INS_PUT_DATA:
+            return handle_put_data(cmd, resp);
 
-    case PIV_INS_GENERATE_ASYMMETRIC:
-        return handle_generate_asymmetric(cmd, resp);
+        case PIV_INS_GENERATE_ASYMMETRIC:
+            return handle_generate_asymmetric(cmd, resp);
 
-    case PIV_INS_GENERAL_AUTHENTICATE:
-        /* TODO: Implement */
-        set_response_sw(resp, PIV_SW_FUNC_NOT_SUPPORTED);
-        resp->len = 0;
-        return 0;
+        case PIV_INS_GENERAL_AUTHENTICATE:
+            /* TODO: Implement */
+            set_response_sw(resp, PIV_SW_FUNC_NOT_SUPPORTED);
+            resp->len = 0;
+            return 0;
 
-    default:
-        LOG_WARN("PIV: Unsupported instruction 0x%02X", cmd->ins);
-        set_response_sw(resp, PIV_SW_INS_NOT_SUPPORTED);
-        resp->len = 0;
-        return 0;
+        default:
+            LOG_WARN("PIV: Unsupported instruction 0x%02X", cmd->ins);
+            set_response_sw(resp, PIV_SW_INS_NOT_SUPPORTED);
+            resp->len = 0;
+            return 0;
     }
 }
 
@@ -389,8 +385,7 @@ int piv_verify_pin(uint8_t pin_ref, const uint8_t *pin, size_t pin_len)
         return -2; /* Blocked */
     }
 
-    if (pin_len == piv_state.pin_len &&
-        memcmp(pin, piv_state.pin, pin_len) == 0) {
+    if (pin_len == piv_state.pin_len && memcmp(pin, piv_state.pin, pin_len) == 0) {
         piv_state.pin_verified = true;
         piv_state.pin_retries = PIV_PIN_MAX_RETRIES;
         return 0;
@@ -401,15 +396,14 @@ int piv_verify_pin(uint8_t pin_ref, const uint8_t *pin, size_t pin_len)
     return -1;
 }
 
-int piv_change_pin(uint8_t pin_ref, const uint8_t *old_pin, size_t old_len,
-                   const uint8_t *new_pin, size_t new_len)
+int piv_change_pin(uint8_t pin_ref, const uint8_t *old_pin, size_t old_len, const uint8_t *new_pin,
+                   size_t new_len)
 {
     if (!piv_state.pin_verified) {
         return -1;
     }
 
-    if (old_len != piv_state.pin_len ||
-        memcmp(old_pin, piv_state.pin, old_len) != 0) {
+    if (old_len != piv_state.pin_len || memcmp(old_pin, piv_state.pin, old_len) != 0) {
         return -1;
     }
 
@@ -423,8 +417,8 @@ int piv_change_pin(uint8_t pin_ref, const uint8_t *old_pin, size_t old_len,
     return 0;
 }
 
-int piv_generate_key(uint8_t key_ref, uint8_t algorithm,
-                     uint8_t *public_key, size_t *public_key_len)
+int piv_generate_key(uint8_t key_ref, uint8_t algorithm, uint8_t *public_key,
+                     size_t *public_key_len)
 {
     /* Find key slot */
     piv_key_slot_t *slot = NULL;
@@ -451,9 +445,8 @@ int piv_generate_key(uint8_t key_ref, uint8_t algorithm,
     return 0;
 }
 
-int piv_general_authenticate(uint8_t key_ref, uint8_t algorithm,
-                              const uint8_t *data, size_t data_len,
-                              uint8_t *response, size_t *resp_len)
+int piv_general_authenticate(uint8_t key_ref, uint8_t algorithm, const uint8_t *data,
+                             size_t data_len, uint8_t *response, size_t *resp_len)
 {
     /* TODO: Implement signature/decrypt operations */
     return -1;
