@@ -117,8 +117,8 @@ uint8_t ctap2_init(void)
 }
 
 /* Forward declaration for the renamed function */
-uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len, uint8_t *response_data,
-                                size_t *response_len);
+uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
+                                uint8_t *response_data, size_t *response_len);
 
 /**
  * @brief Process a CTAP2 request.
@@ -239,8 +239,8 @@ uint8_t ctap2_get_info(uint8_t *response_data, size_t *response_len)
  * @param response_len Pointer to store the response length.
  * @return CTAP2 status code.
  */
-uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len, uint8_t *response_data,
-                                size_t *response_len)
+uint8_t ctap2_handle_client_pin(const uint8_t *request_data, size_t request_len,
+                                uint8_t *response_data, size_t *response_len)
 {
     LOG_INFO("ClientPIN command");
 
