@@ -562,7 +562,7 @@ int storage_get_resident_credential_count(size_t *count)
         size_t off = 32; /* rp_id_hash */
         uint8_t user_id_len = plaintext[off + STORAGE_MAX_USER_ID_LENGTH];
         off += user_id_len + 1 + 32; /* user_id + len byte + private_key */
-        
+
         bool is_resident = (plaintext[off] == 1);
         if (is_resident) {
             (*count)++;
@@ -723,7 +723,7 @@ int storage_get_attestation_cert(uint8_t *cert, size_t max_len, size_t *cert_len
     /* For now, return empty certificate (not implemented) */
     /* In production, this would read a stored X.509 certificate */
     *cert_len = 0;
-    
+
     LOG_WARN("Attestation certificate not implemented");
     return STORAGE_OK;
 }
@@ -736,7 +736,7 @@ int storage_set_attestation_cert(const uint8_t *cert, size_t cert_len)
 
     /* For now, do nothing (not implemented) */
     /* In production, this would store the X.509 certificate */
-    
+
     LOG_WARN("Attestation certificate storage not implemented");
     return STORAGE_OK;
 }

@@ -6,12 +6,11 @@
  * @license MIT License
  */
 
-#include "ctap2.h"
-
 #include <string.h>
 
 #include "cbor.h"
 #include "crypto.h"
+#include "ctap2.h"
 #include "logger.h"
 #include "storage.h"
 
@@ -58,7 +57,8 @@ static struct {
 /**
  * @brief Verify PIN authentication for credential management
  */
-static uint8_t verify_cm_pin_auth(const uint8_t *pin_auth, size_t pin_auth_len, uint8_t pin_protocol)
+static uint8_t verify_cm_pin_auth(const uint8_t *pin_auth, size_t pin_auth_len,
+                                  uint8_t pin_protocol)
 {
     /* PIN is always required for credential management */
     if (!storage_is_pin_set()) {
@@ -114,8 +114,8 @@ static uint8_t cm_get_metadata(uint8_t *response_data, size_t *response_len)
 
     *response_len = cbor_encoder_get_size(&encoder);
 
-    LOG_INFO("Credential metadata: %zu resident, %zu total, %zu remaining",
-             resident_creds, existing_creds, STORAGE_MAX_CREDENTIALS - existing_creds);
+    LOG_INFO("Credential metadata: %zu resident, %zu total, %zu remaining", resident_creds,
+             existing_creds, STORAGE_MAX_CREDENTIALS - existing_creds);
 
     return CTAP2_OK;
 }
@@ -149,7 +149,8 @@ static uint8_t cm_enumerate_rps_begin(uint8_t *response_data, size_t *response_l
             }
 
             if (!found && cm_state.total_rps < STORAGE_MAX_CREDENTIALS) {
-                memcpy(&cm_state.enumerated_rps[cm_state.total_rps], &cred, sizeof(storage_credential_t));
+                memcpy(&cm_state.enumerated_rps[cm_state.total_rps], &cred,
+                       sizeof(storage_credential_t));
                 cm_state.total_rps++;
             }
         }
@@ -236,7 +237,8 @@ static uint8_t cm_enumerate_rps_get_next(uint8_t *response_data, size_t *respons
 /**
  * @brief Begin credential enumeration for an RP
  */
-static uint8_t cm_enumerate_creds_begin(const uint8_t *rp_id_hash, uint8_t *response_data, size_t *response_len)
+static uint8_t cm_enumerate_creds_begin(const uint8_t *rp_id_hash, uint8_t *response_data,
+                                        size_t *response_len)
 {
     /* Reset credential enumeration state */
     cm_state.cred_enumeration_active = false;
@@ -246,7 +248,8 @@ static uint8_t cm_enumerate_creds_begin(const uint8_t *rp_id_hash, uint8_t *resp
 
     /* Find all credentials for this RP */
     if (storage_find_credentials_by_rp(rp_id_hash, cm_state.enumerated_creds,
-                                       STORAGE_MAX_CREDENTIALS, &cm_state.total_creds) != STORAGE_OK) {
+                                       STORAGE_MAX_CREDENTIALS,
+                                       &cm_state.total_creds) != STORAGE_OK) {
         return CTAP2_ERR_PROCESSING;
     }
 
@@ -290,7 +293,7 @@ static uint8_t cm_enumerate_creds_begin(const uint8_t *rp_id_hash, uint8_t *resp
         cbor_encode_int(&encoder, 3); /* alg */
         cbor_encode_int(&encoder, cred->algorithm);
         cbor_encode_int(&encoder, -1); /* crv */
-        cbor_encode_int(&encoder, 1); /* P-256 */
+        cbor_encode_int(&encoder, 1);  /* P-256 */
         cbor_encode_int(&encoder, -2); /* x */
         cbor_encode_bytes(&encoder, &public_key[0], 32);
         cbor_encode_int(&encoder, -3); /* y */
@@ -381,7 +384,8 @@ static uint8_t cm_enumerate_creds_get_next(uint8_t *response_data, size_t *respo
 /**
  * @brief Delete a credential
  */
-static uint8_t cm_delete_credential(const uint8_t *credential_id, uint8_t *response_data, size_t *response_len)
+static uint8_t cm_delete_credential(const uint8_t *credential_id, uint8_t *response_data,
+                                    size_t *response_len)
 {
     if (storage_delete_credential(credential_id) != STORAGE_OK) {
         return CTAP2_ERR_NO_CREDENTIALS;
@@ -430,7 +434,7 @@ uint8_t ctap2_credential_management(const uint8_t *request_data, size_t request_
 
         switch (key) {
             case CM_PARAM_SUBCOMMAND:
-                if (cbor_decode_uint(&decoder, (uint64_t*)&subcommand) != CBOR_OK) {
+                if (cbor_decode_uint(&decoder, (uint64_t *) &subcommand) != CBOR_OK) {
                     return CTAP2_ERR_INVALID_CBOR;
                 }
                 has_subcommand = true;
@@ -460,10 +464,12 @@ uint8_t ctap2_credential_management(const uint8_t *request_data, size_t request_
                         if (cbor_decode_map_start(&decoder, &cred_map_size) == CBOR_OK) {
                             for (uint64_t k = 0; k < cred_map_size; k++) {
                                 char cred_key[8];
-                                if (cbor_decode_text(&decoder, cred_key, sizeof(cred_key)) == CBOR_OK &&
+                                if (cbor_decode_text(&decoder, cred_key, sizeof(cred_key)) ==
+                                        CBOR_OK &&
                                     strcmp(cred_key, "id") == 0) {
                                     if (cbor_decode_bytes(&decoder, credential_id,
-                                                          STORAGE_CREDENTIAL_ID_LENGTH) == CBOR_OK) {
+                                                          STORAGE_CREDENTIAL_ID_LENGTH) ==
+                                        CBOR_OK) {
                                         has_credential_id = true;
                                     }
                                 } else {
@@ -479,7 +485,7 @@ uint8_t ctap2_credential_management(const uint8_t *request_data, size_t request_
             }
 
             case CM_PARAM_PIN_PROTOCOL:
-                if (cbor_decode_uint(&decoder, (uint64_t*)&pin_protocol) != CBOR_OK) {
+                if (cbor_decode_uint(&decoder, (uint64_t *) &pin_protocol) != CBOR_OK) {
                     return CTAP2_ERR_INVALID_CBOR;
                 }
                 break;
@@ -504,8 +510,7 @@ uint8_t ctap2_credential_management(const uint8_t *request_data, size_t request_
 
     /* Verify PIN authentication */
     uint8_t pin_result = verify_cm_pin_auth(has_pin_auth ? pin_auth : NULL,
-                                             has_pin_auth ? pin_auth_len : 0,
-                                             pin_protocol);
+                                            has_pin_auth ? pin_auth_len : 0, pin_protocol);
     if (pin_result != CTAP2_OK) {
         return pin_result;
     }

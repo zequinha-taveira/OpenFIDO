@@ -112,8 +112,8 @@ uint8_t ctap2_process_request(const ctap2_request_t *request, ctap2_response_t *
             return ctap2_get_next_assertion(response->data, &response->data_len);
 
         case CTAP2_CMD_CREDENTIAL_MANAGEMENT:
-            return ctap2_credential_management(request->data, request->data_len,
-                                               response->data, &response->data_len);
+            return ctap2_credential_management(request->data, request->data_len, response->data,
+                                               &response->data_len);
 
         default:
             LOG_WARN("Unknown CTAP2 command: 0x%02X", request->cmd);
@@ -183,8 +183,8 @@ uint8_t ctap2_get_info(uint8_t *response_data, size_t *response_len)
     return CTAP2_OK;
 }
 
-uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len,
-                          uint8_t *response_data, size_t *response_len)
+uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len, uint8_t *response_data,
+                         size_t *response_len)
 {
     LOG_INFO("ClientPIN command");
 
@@ -255,7 +255,7 @@ uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len,
 
             cbor_encode_map_start(&encoder, 1);
             cbor_encode_uint(&encoder, 0x01); /* keyAgreement */
-            
+
             /* Encode COSE_Key */
             cbor_encode_map_start(&encoder, 5);
             cbor_encode_int(&encoder, 1); /* kty */
@@ -263,7 +263,7 @@ uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len,
             cbor_encode_int(&encoder, 3); /* alg */
             cbor_encode_int(&encoder, COSE_ALG_ES256);
             cbor_encode_int(&encoder, -1); /* crv */
-            cbor_encode_int(&encoder, 1); /* P-256 */
+            cbor_encode_int(&encoder, 1);  /* P-256 */
             cbor_encode_int(&encoder, -2); /* x */
             cbor_encode_bytes(&encoder, &public_key[0], 32);
             cbor_encode_int(&encoder, -3); /* y */
@@ -358,34 +358,34 @@ uint8_t ctap2_client_pin(const uint8_t *request_data, size_t request_len,
 
 uint8_t ctap2_reset(void)
 
-    {
-        LOG_INFO("Performing authenticator reset");
+{
+    LOG_INFO("Performing authenticator reset");
 
-        /* Wait for user presence within 10 seconds of power-up */
-        if (!hal_button_wait_press(10000)) {
-            return CTAP2_ERR_USER_ACTION_TIMEOUT;
-        }
-
-        /* Format storage */
-        if (storage_format() != STORAGE_OK) {
-            return CTAP2_ERR_PROCESSING;
-        }
-
-        ctap2_state.pending_assertions = 0;
-
-        LOG_INFO("Reset completed successfully");
-        return CTAP2_OK;
+    /* Wait for user presence within 10 seconds of power-up */
+    if (!hal_button_wait_press(10000)) {
+        return CTAP2_ERR_USER_ACTION_TIMEOUT;
     }
 
-    uint8_t ctap2_get_next_assertion(uint8_t *response_data, size_t *response_len)
-    {
-        if (ctap2_state.pending_assertions == 0) {
-            return CTAP2_ERR_NO_OPERATION_PENDING;
-        }
-
-        /* Return next assertion from pending list */
-        ctap2_state.pending_assertions--;
-
-        LOG_INFO("GetNextAssertion: %d remaining", ctap2_state.pending_assertions);
-        return CTAP2_OK;
+    /* Format storage */
+    if (storage_format() != STORAGE_OK) {
+        return CTAP2_ERR_PROCESSING;
     }
+
+    ctap2_state.pending_assertions = 0;
+
+    LOG_INFO("Reset completed successfully");
+    return CTAP2_OK;
+}
+
+uint8_t ctap2_get_next_assertion(uint8_t *response_data, size_t *response_len)
+{
+    if (ctap2_state.pending_assertions == 0) {
+        return CTAP2_ERR_NO_OPERATION_PENDING;
+    }
+
+    /* Return next assertion from pending list */
+    ctap2_state.pending_assertions--;
+
+    LOG_INFO("GetNextAssertion: %d remaining", ctap2_state.pending_assertions);
+    return CTAP2_OK;
+}
