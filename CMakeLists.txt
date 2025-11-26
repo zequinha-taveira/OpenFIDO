@@ -37,6 +37,23 @@ set(STORAGE_SOURCES
 
 set(USB_SOURCES
     src/usb/usb_hid.c
+    src/usb/usb_ccid.c
+    src/usb/ykman.c
+    src/usb/usb_keyboard.c
+)
+
+set(PIV_SOURCES
+    src/piv/piv.c
+)
+
+set(OPENPGP_SOURCES
+    src/openpgp/openpgp.c
+)
+
+set(OATH_SOURCES
+    src/oath/oath.c
+    src/oath/yubikey_otp.c
+    src/oath/challenge_response.c
 )
 
 set(UTILS_SOURCES
@@ -70,11 +87,15 @@ endif()
 
 # Include directories
 include_directories(
+    src
     src/fido2
     src/crypto
     src/storage
     src/hal
     src/usb
+    src/piv
+    src/openpgp
+    src/oath
     src/utils
 )
 
@@ -86,6 +107,9 @@ add_executable(openfido
     ${STORAGE_SOURCES}
     ${HAL_SOURCES}
     ${USB_SOURCES}
+    ${PIV_SOURCES}
+    ${OPENPGP_SOURCES}
+    ${OATH_SOURCES}
     ${UTILS_SOURCES}
 )
 

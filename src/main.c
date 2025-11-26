@@ -17,6 +17,10 @@
 #include "storage.h"
 #include "u2f.h"
 #include "usb_hid.h"
+#include "usb_ccid.h"
+#include "ykman.h"
+#include "piv.h"
+#include "openpgp.h"
 
 #define APP_VERSION "1.0.0"
 
@@ -66,11 +70,43 @@ static int init_subsystems(void)
         return -1;
     }
 
+    /* Initialize CCID (Smart Card) */
+    LOG_INFO("Initializing CCID interface...");
+    ret = usb_ccid_init();
+    if (ret != 0) {
+        LOG_ERROR("CCID initialization failed: %d", ret);
+        return -1;
+    }
+
     /* Initialize CTAP2 protocol handler */
     LOG_INFO("Initializing CTAP2 protocol...");
     ret = ctap2_init();
     if (ret != CTAP2_OK) {
         LOG_ERROR("CTAP2 initialization failed: %d", ret);
+        return -1;
+    }
+
+    /* Initialize PIV (Personal Identity Verification) */
+    LOG_INFO("Initializing PIV module...");
+    ret = piv_init();
+    if (ret != 0) {
+        LOG_ERROR("PIV initialization failed: %d", ret);
+        return -1;
+    }
+
+    /* Initialize OpenPGP Card */
+    LOG_INFO("Initializing OpenPGP module...");
+    ret = openpgp_init();
+    if (ret != 0) {
+        LOG_ERROR("OpenPGP initialization failed: %d", ret);
+        return -1;
+    }
+
+    /* Initialize Yubico Management */
+    LOG_INFO("Initializing Yubico Management...");
+    ret = ykman_init();
+    if (ret != 0) {
+        LOG_ERROR("Yubico Management initialization failed: %d", ret);
         return -1;
     }
 

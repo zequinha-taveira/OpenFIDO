@@ -64,4 +64,38 @@
  */
 #define CONFIG_SEC_MIN_PIN_LENGTH 4
 
+/* ==========================================================================
+ *  Protocol Feature Flags
+ * ========================================================================== */
+
+/**
+ * Enable PIV (Personal Identity Verification) support
+ * 1 = Enabled, 0 = Disabled
+ */
+#define CONFIG_ENABLE_PIV 1
+
+/**
+ * Enable OpenPGP Card support
+ * 1 = Enabled, 0 = Disabled
+ */
+#define CONFIG_ENABLE_OPENPGP 1
+
+/**
+ * Enable Yubico Management protocol
+ * 1 = Enabled, 0 = Disabled
+ */
+#define CONFIG_ENABLE_YKMAN 1
+
+/**
+ * Enable OATH (TOTP/HOTP) support
+ * 1 = Enabled, 0 = Disabled
+ */
+#define CONFIG_ENABLE_OATH 1
+
+/**
+ * Enable Yubikey OTP support
+ * 1 = Enabled, 0 = Disabled
+ */
+#define CONFIG_ENABLE_YKOTP 1
+
 #endif /* CONFIG_H */
