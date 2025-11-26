@@ -109,20 +109,6 @@ uint8_t ctap2_process_request(const ctap2_request_t *request, ctap2_response_t *
             return ctap2_reset();
 
         case CTAP2_CMD_GET_NEXT_ASSERTION:
-            return ctap2_get_next_assertion(response->data, &response->data_len);
-
-        case CTAP2_CMD_CREDENTIAL_MANAGEMENT:
-            return ctap2_credential_management(request->data, request->data_len, response->data,
-                                               &response->data_len);
-
-        case CTAP2_CMD_CONFIG:
-            return ctap2_authenticator_config(request->data, request->data_len, response->data,
-                                              &response->data_len);
-
-        default:
-            LOG_WARN("Unknown CTAP2 command: 0x%02X", request->cmd);
-            return CTAP2_ERR_INVALID_COMMAND;
-    }
 }
 
 uint8_t ctap2_get_info(uint8_t *response_data, size_t *response_len)

@@ -58,6 +58,10 @@ typedef struct {
     int algorithm;                                      /**< COSE algorithm identifier */
     bool hmac_secret;                                   /**< HMAC-Secret extension enabled */
     uint8_t protection_policy;                          /**< Credential protection policy */
+    uint8_t cred_blob[32];                              /**< credBlob extension data */
+    size_t cred_blob_len;                               /**< Length of credBlob */
+    uint8_t large_blob_key[32];                         /**< largeBlobKey for encryption */
+    bool has_large_blob_key;                            /**< Whether largeBlobKey is set */
 } storage_credential_t;
 
 /**
