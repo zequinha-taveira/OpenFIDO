@@ -203,6 +203,18 @@ uint8_t ctap2_reset(void);
  */
 uint8_t ctap2_get_next_assertion(uint8_t *response_data, size_t *response_len);
 
+/**
+ * @brief Handle CTAP2 credential management command (0x0A)
+ *
+ * @param request_data Request data buffer
+ * @param request_len Request data length
+ * @param response_data Response data buffer
+ * @param response_len Pointer to response data length
+ * @return CTAP2 status code
+ */
+uint8_t ctap2_credential_management(const uint8_t *request_data, size_t request_len,
+                                    uint8_t *response_data, size_t *response_len);
+
 #ifdef __cplusplus
 }
 #endif

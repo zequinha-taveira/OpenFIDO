@@ -66,6 +66,15 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
             const uint8_t *challenge = data;
             const uint8_t *application = data + 32;
 
+            /* Request user presence */
+            LOG_INFO("U2F Register: Waiting for user presence...");
+            hal_led_set_state(HAL_LED_BLINK_FAST);
+            if (!hal_button_wait_press(30000)) {
+                hal_led_set_state(HAL_LED_OFF);
+                return U2F_SW_CONDITIONS_NOT_SATISFIED;
+            }
+            hal_led_set_state(HAL_LED_ON);
+
             /* Generate key pair */
             uint8_t private_key[32];
             uint8_t public_key[64];
@@ -168,6 +177,7 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
             memset(private_key, 0, sizeof(private_key));
             memset(att_key, 0, sizeof(att_key));
 
+            hal_led_set_state(HAL_LED_OFF);
             return U2F_SW_NO_ERROR;
         }
 
@@ -202,6 +212,15 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
             if (p1 == U2F_AUTH_CHECK_ONLY) {
                 return U2F_SW_CONDITIONS_NOT_SATISFIED;
             }
+
+            /* Request user presence */
+            LOG_INFO("U2F Authenticate: Waiting for user presence...");
+            hal_led_set_state(HAL_LED_BLINK_FAST);
+            if (!hal_button_wait_press(30000)) {
+                hal_led_set_state(HAL_LED_OFF);
+                return U2F_SW_CONDITIONS_NOT_SATISFIED;
+            }
+            hal_led_set_state(HAL_LED_ON);
 
             /* Increment counter */
             uint32_t counter;
@@ -257,6 +276,7 @@ uint16_t u2f_process_apdu(const uint8_t *request_data, size_t request_len, uint8
             response_data[sig_len_pos] = offset - sig_len_pos - 1;
 
             *response_len = offset;
+            hal_led_set_state(HAL_LED_OFF);
             return U2F_SW_NO_ERROR;
         }
 

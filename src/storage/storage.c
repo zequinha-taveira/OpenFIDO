@@ -528,3 +528,215 @@ int storage_get_credential_count(size_t *count)
 
     return STORAGE_OK;
 }
+
+int storage_get_resident_credential_count(size_t *count)
+{
+    if (!storage_state.initialized || count == NULL) {
+        return STORAGE_ERROR_INVALID_PARAM;
+    }
+
+    *count = 0;
+
+    for (int i = 0; i < STORAGE_MAX_CREDENTIALS; i++) {
+        storage_flash_credential_t flash_cred;
+        uint32_t offset = STORAGE_OFFSET_CREDS + (i * STORAGE_CRED_SIZE);
+
+        if (hal_flash_read(offset, (uint8_t *) &flash_cred, sizeof(storage_flash_credential_t)) !=
+            HAL_OK) {
+            continue;
+        }
+
+        if (!flash_cred.valid) {
+            continue;
+        }
+
+        /* Decrypt to check if resident */
+        uint8_t plaintext[400];
+        if (crypto_aes_gcm_decrypt(device_master_key, flash_cred.iv, NULL, 0,
+                                   flash_cred.encrypted_data, sizeof(flash_cred.encrypted_data),
+                                   flash_cred.tag, plaintext) != CRYPTO_OK) {
+            continue;
+        }
+
+        /* Check resident flag (at offset 32 + user_id_len + 1 + 32) */
+        size_t off = 32; /* rp_id_hash */
+        uint8_t user_id_len = plaintext[off + STORAGE_MAX_USER_ID_LENGTH];
+        off += user_id_len + 1 + 32; /* user_id + len byte + private_key */
+        
+        bool is_resident = (plaintext[off] == 1);
+        if (is_resident) {
+            (*count)++;
+        }
+
+        secure_zero(plaintext, sizeof(plaintext));
+    }
+
+    return STORAGE_OK;
+}
+
+int storage_find_credentials_by_rp(const uint8_t *rp_id_hash, storage_credential_t *credentials,
+                                   size_t max_credentials, size_t *count)
+{
+    if (!storage_state.initialized || rp_id_hash == NULL || credentials == NULL || count == NULL) {
+        return STORAGE_ERROR_INVALID_PARAM;
+    }
+
+    *count = 0;
+
+    for (int i = 0; i < STORAGE_MAX_CREDENTIALS && *count < max_credentials; i++) {
+        storage_flash_credential_t flash_cred;
+        uint32_t offset = STORAGE_OFFSET_CREDS + (i * STORAGE_CRED_SIZE);
+
+        if (hal_flash_read(offset, (uint8_t *) &flash_cred, sizeof(storage_flash_credential_t)) !=
+            HAL_OK) {
+            continue;
+        }
+
+        if (!flash_cred.valid) {
+            continue;
+        }
+
+        /* Decrypt credential */
+        uint8_t plaintext[400];
+        if (crypto_aes_gcm_decrypt(device_master_key, flash_cred.iv, NULL, 0,
+                                   flash_cred.encrypted_data, sizeof(flash_cred.encrypted_data),
+                                   flash_cred.tag, plaintext) != CRYPTO_OK) {
+            continue;
+        }
+
+        /* Check if RP ID hash matches */
+        if (memcmp(plaintext, rp_id_hash, 32) == 0) {
+            /* Deserialize credential */
+            storage_credential_t *cred = &credentials[*count];
+            size_t off = 0;
+
+            memcpy(cred->rp_id_hash, &plaintext[off], 32);
+            off += 32;
+
+            /* Read user_id_len */
+            cred->user_id_len = plaintext[off + STORAGE_MAX_USER_ID_LENGTH];
+            memcpy(cred->user_id, &plaintext[off], cred->user_id_len);
+            off += cred->user_id_len + 1;
+
+            memcpy(cred->private_key, &plaintext[off], 32);
+            off += 32;
+
+            cred->resident = (plaintext[off++] == 1);
+
+            if (cred->resident) {
+                strncpy(cred->user_name, (const char *) &plaintext[off],
+                        STORAGE_MAX_USER_NAME_LENGTH);
+                off += STORAGE_MAX_USER_NAME_LENGTH;
+
+                strncpy(cred->display_name, (const char *) &plaintext[off],
+                        STORAGE_MAX_DISPLAY_NAME_LENGTH);
+                off += STORAGE_MAX_DISPLAY_NAME_LENGTH;
+
+                strncpy(cred->rp_id, (const char *) &plaintext[off], STORAGE_MAX_RP_ID_LENGTH);
+            }
+
+            memcpy(cred->id, flash_cred.id, STORAGE_CREDENTIAL_ID_LENGTH);
+            cred->sign_count = flash_cred.sign_count;
+
+            (*count)++;
+        }
+
+        secure_zero(plaintext, sizeof(plaintext));
+    }
+
+    LOG_INFO("Found %zu credentials for RP", *count);
+    return STORAGE_OK;
+}
+
+int storage_delete_credential(const uint8_t *credential_id)
+{
+    if (!storage_state.initialized || credential_id == NULL) {
+        return STORAGE_ERROR_INVALID_PARAM;
+    }
+
+    /* Find credential */
+    for (int i = 0; i < STORAGE_MAX_CREDENTIALS; i++) {
+        storage_flash_credential_t flash_cred;
+        uint32_t offset = STORAGE_OFFSET_CREDS + (i * STORAGE_CRED_SIZE);
+
+        if (hal_flash_read(offset, (uint8_t *) &flash_cred, sizeof(storage_flash_credential_t)) !=
+            HAL_OK) {
+            continue;
+        }
+
+        if (!flash_cred.valid) {
+            continue;
+        }
+
+        if (memcmp(flash_cred.id, credential_id, STORAGE_CREDENTIAL_ID_LENGTH) == 0) {
+            /* Mark as invalid */
+            flash_cred.valid = false;
+
+            if (hal_flash_write(offset, (const uint8_t *) &flash_cred,
+                                sizeof(storage_flash_credential_t)) != HAL_OK) {
+                LOG_ERROR("Failed to delete credential");
+                return STORAGE_ERROR;
+            }
+
+            LOG_INFO("Deleted credential from slot %d", i);
+            return STORAGE_OK;
+        }
+    }
+
+    return STORAGE_ERROR_NOT_FOUND;
+}
+
+int storage_reset_pin_retries(void)
+{
+    if (!storage_state.initialized) {
+        return STORAGE_ERROR_INVALID_PARAM;
+    }
+
+    storage_state.pin_data.pin_retries = STORAGE_PIN_MAX_RETRIES;
+
+    if (hal_flash_write(STORAGE_OFFSET_PIN, (const uint8_t *) &storage_state.pin_data,
+                        sizeof(storage_pin_data_t)) != HAL_OK) {
+        LOG_ERROR("Failed to reset PIN retries");
+        return STORAGE_ERROR;
+    }
+
+    LOG_INFO("PIN retries reset to %d", STORAGE_PIN_MAX_RETRIES);
+    return STORAGE_OK;
+}
+
+int storage_get_counter(uint32_t *counter)
+{
+    if (!storage_state.initialized || counter == NULL) {
+        return STORAGE_ERROR_INVALID_PARAM;
+    }
+
+    *counter = storage_state.global_counter;
+    return STORAGE_OK;
+}
+
+int storage_get_attestation_cert(uint8_t *cert, size_t max_len, size_t *cert_len)
+{
+    if (!storage_state.initialized || cert == NULL || cert_len == NULL) {
+        return STORAGE_ERROR_INVALID_PARAM;
+    }
+
+    /* For now, return empty certificate (not implemented) */
+    /* In production, this would read a stored X.509 certificate */
+    *cert_len = 0;
+    
+    LOG_WARN("Attestation certificate not implemented");
+    return STORAGE_OK;
+}
+
+int storage_set_attestation_cert(const uint8_t *cert, size_t cert_len)
+{
+    if (!storage_state.initialized || cert == NULL) {
+        return STORAGE_ERROR_INVALID_PARAM;
+    }
+
+    /* For now, do nothing (not implemented) */
+    /* In production, this would store the X.509 certificate */
+    
+    LOG_WARN("Attestation certificate storage not implemented");
+    return STORAGE_OK;
+}
