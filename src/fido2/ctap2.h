@@ -226,7 +226,7 @@ uint8_t ctap2_credential_management(const uint8_t *request_data, size_t request_
  * @return CTAP2 status code
  */
 uint8_t ctap2_authenticator_config(const uint8_t *request_data, size_t request_len,
-                                    uint8_t *response_data, size_t *response_len);
+                                   uint8_t *response_data, size_t *response_len);
 
 #ifdef __cplusplus
 }

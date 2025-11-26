@@ -105,7 +105,7 @@ static uint8_t config_set_min_pin_length(uint8_t new_min_length, uint8_t *respon
  * @brief Main authenticator configuration command handler
  */
 uint8_t ctap2_authenticator_config(const uint8_t *request_data, size_t request_len,
-                                    uint8_t *response_data, size_t *response_len)
+                                   uint8_t *response_data, size_t *response_len)
 {
     LOG_INFO("Authenticator configuration command");
 
@@ -136,7 +136,7 @@ uint8_t ctap2_authenticator_config(const uint8_t *request_data, size_t request_l
 
         switch (key) {
             case CONFIG_PARAM_SUBCOMMAND:
-                if (cbor_decode_uint(&decoder, (uint64_t *)&subcommand) != CBOR_OK) {
+                if (cbor_decode_uint(&decoder, (uint64_t *) &subcommand) != CBOR_OK) {
                     return CTAP2_ERR_INVALID_CBOR;
                 }
                 has_subcommand = true;
@@ -157,7 +157,7 @@ uint8_t ctap2_authenticator_config(const uint8_t *request_data, size_t request_l
                     }
 
                     if (param_key == 0x01) { /* newMinPINLength */
-                        if (cbor_decode_uint(&decoder, (uint64_t *)&new_min_pin_length) ==
+                        if (cbor_decode_uint(&decoder, (uint64_t *) &new_min_pin_length) ==
                             CBOR_OK) {
                             has_min_pin_length = true;
                         }
@@ -169,7 +169,7 @@ uint8_t ctap2_authenticator_config(const uint8_t *request_data, size_t request_l
             }
 
             case CONFIG_PARAM_PIN_PROTOCOL:
-                if (cbor_decode_uint(&decoder, (uint64_t *)&pin_protocol) != CBOR_OK) {
+                if (cbor_decode_uint(&decoder, (uint64_t *) &pin_protocol) != CBOR_OK) {
                     return CTAP2_ERR_INVALID_CBOR;
                 }
                 break;
@@ -193,9 +193,8 @@ uint8_t ctap2_authenticator_config(const uint8_t *request_data, size_t request_l
     }
 
     /* Verify PIN authentication */
-    uint8_t pin_result =
-        verify_config_pin_auth(has_pin_auth ? pin_auth : NULL, has_pin_auth ? pin_auth_len : 0,
-                               pin_protocol);
+    uint8_t pin_result = verify_config_pin_auth(has_pin_auth ? pin_auth : NULL,
+                                                has_pin_auth ? pin_auth_len : 0, pin_protocol);
     if (pin_result != CTAP2_OK) {
         return pin_result;
     }

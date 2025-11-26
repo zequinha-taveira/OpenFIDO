@@ -9,27 +9,27 @@
 #ifndef PERMISSIONS_H
 #define PERMISSIONS_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Permission Bits (CTAP 2.1) */
-#define PERM_MAKE_CREDENTIAL 0x01       /* MakeCredential (mc) */
-#define PERM_GET_ASSERTION 0x02         /* GetAssertion (ga) */
-#define PERM_CREDENTIAL_MGMT 0x04       /* CredentialManagement (cm) */
-#define PERM_BIO_ENROLLMENT 0x08        /* BioEnrollment (be) */
-#define PERM_LARGE_BLOB_WRITE 0x10      /* LargeBlobWrite (lbw) */
-#define PERM_AUTHENTICATOR_CFG 0x20     /* AuthenticatorConfig (acfg) */
+#define PERM_MAKE_CREDENTIAL 0x01   /* MakeCredential (mc) */
+#define PERM_GET_ASSERTION 0x02     /* GetAssertion (ga) */
+#define PERM_CREDENTIAL_MGMT 0x04   /* CredentialManagement (cm) */
+#define PERM_BIO_ENROLLMENT 0x08    /* BioEnrollment (be) */
+#define PERM_LARGE_BLOB_WRITE 0x10  /* LargeBlobWrite (lbw) */
+#define PERM_AUTHENTICATOR_CFG 0x20 /* AuthenticatorConfig (acfg) */
 
 /* Permission State */
 typedef struct {
-    uint8_t permissions;                /* Active permissions bitmap */
-    uint8_t rp_id_hash[32];            /* RP ID hash for MC/GA permissions */
-    bool has_rp_id;                    /* Whether RP ID is set */
-    uint32_t expiry_time;              /* Permission expiry timestamp */
+    uint8_t permissions;    /* Active permissions bitmap */
+    uint8_t rp_id_hash[32]; /* RP ID hash for MC/GA permissions */
+    bool has_rp_id;         /* Whether RP ID is set */
+    uint32_t expiry_time;   /* Permission expiry timestamp */
 } permission_state_t;
 
 /**
