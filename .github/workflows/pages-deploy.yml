@@ -90,13 +90,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download docs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: docs-build
           path: site/docs
 
       - name: Download flasher
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: flasher-build
           path: site/flasher
