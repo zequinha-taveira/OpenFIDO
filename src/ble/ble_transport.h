@@ -181,6 +181,44 @@ uint64_t ble_transport_get_last_activity_ms(void);
  */
 int ble_transport_disconnect(void);
 
+/* ========== Power Management ========== */
+
+/**
+ * @brief Check if transport should enter deep sleep
+ *
+ * Checks if the transport has been idle long enough to enter deep sleep mode.
+ *
+ * @return true if deep sleep should be entered, false otherwise
+ */
+bool ble_transport_should_enter_deep_sleep(void);
+
+/**
+ * @brief Update connection state and power management
+ *
+ * Should be called periodically from main loop to update connection
+ * parameters and power management state based on activity.
+ */
+void ble_transport_update_power_state(void);
+
+/**
+ * @brief Enter deep sleep mode
+ *
+ * Puts the BLE transport into deep sleep mode to conserve power.
+ * The device can be woken by button press or BLE connection request.
+ *
+ * @return 0 on success, negative error code otherwise
+ */
+int ble_transport_enter_deep_sleep(void);
+
+/**
+ * @brief Wake from deep sleep mode
+ *
+ * Wakes the BLE transport from deep sleep mode and resumes advertising.
+ *
+ * @return 0 on success, negative error code otherwise
+ */
+int ble_transport_wake_from_deep_sleep(void);
+
 /* ========== Transport Abstraction Integration ========== */
 
 /**

@@ -245,6 +245,34 @@ int hal_watchdog_init(uint32_t timeout_ms);
  */
 int hal_watchdog_feed(void);
 
+/* ========== Power Management Functions ========== */
+
+/**
+ * @brief Enter deep sleep mode
+ *
+ * Puts the device into deep sleep mode to conserve power.
+ * The device can be woken by button press, timer, or external interrupt.
+ *
+ * @return HAL_OK on success, error code otherwise
+ */
+int hal_enter_deep_sleep(void);
+
+/**
+ * @brief Wake from deep sleep mode
+ *
+ * Wakes the device from deep sleep mode and restores normal operation.
+ *
+ * @return HAL_OK on success, error code otherwise
+ */
+int hal_wake_from_sleep(void);
+
+/**
+ * @brief Check if device woke from deep sleep
+ *
+ * @return true if device just woke from deep sleep, false otherwise
+ */
+bool hal_is_wake_from_sleep(void);
+
 #ifdef __cplusplus
 }
 #endif

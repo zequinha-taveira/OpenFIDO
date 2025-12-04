@@ -44,6 +44,8 @@ typedef struct {
     ble_transport_callbacks_t callbacks;
     ble_connection_state_t connection;
     ble_fragment_buffer_t rx_fragment;
+    bool low_power_mode;
+    uint64_t last_global_activity_ms;
 } ble_transport_ctx_t;
 
 static ble_transport_ctx_t transport_state = {
@@ -57,7 +59,9 @@ static ble_transport_ctx_t transport_state = {
                    .last_activity_ms = 0,
                    .connection_time_ms = 0,
                    .pairing_attempts = 0,
-                   .pairing_block_until_ms = 0}};
+                   .pairing_block_until_ms = 0},
+    .low_power_mode = false,
+    .last_global_activity_ms = 0};
 
 /* ========== Connection Parameters ========== */
 
@@ -75,6 +79,19 @@ static ble_transport_ctx_t transport_state = {
 
 /* Idle timeout before switching to low-power connection params (1 second) */
 #define BLE_IDLE_TIMEOUT_MS 1000
+
+/* ========== Power Management Parameters ========== */
+
+/* Low-power advertising intervals (1000ms - 2000ms) */
+#define BLE_ADV_INTERVAL_LOW_POWER_MIN_MS 1000
+#define BLE_ADV_INTERVAL_LOW_POWER_MAX_MS 2000
+
+/* Normal advertising intervals (100ms - 200ms) */
+#define BLE_ADV_INTERVAL_NORMAL_MIN_MS 100
+#define BLE_ADV_INTERVAL_NORMAL_MAX_MS 200
+
+/* Deep sleep timeout (5 minutes of inactivity) */
+#define BLE_DEEP_SLEEP_TIMEOUT_MS (5 * 60 * 1000)
 
 /* ========== Security Parameters ========== */
 
@@ -99,6 +116,9 @@ static void handle_pairing_request(const hal_ble_event_t *event);
 static void handle_pairing_complete(const hal_ble_event_t *event);
 static void handle_pairing_failed(const hal_ble_event_t *event);
 static void reset_pairing_attempts(void);
+static int enter_low_power_mode(void);
+static int exit_low_power_mode(void);
+static void update_global_activity_timestamp(void);
 
 /* ========== Transport Management ========== */
 
@@ -180,19 +200,28 @@ int ble_transport_start(void)
 
     LOG_INFO("Starting BLE transport");
 
-    /* Start advertising */
-    int ret = hal_ble_start_advertising(NULL);
+    /* Start advertising with low-power intervals */
+    hal_ble_adv_params_t adv_params = {.interval_min_ms = BLE_ADV_INTERVAL_LOW_POWER_MIN_MS,
+                                       .interval_max_ms = BLE_ADV_INTERVAL_LOW_POWER_MAX_MS,
+                                       .timeout_s = 0,
+                                       .connectable = true};
+
+    int ret = hal_ble_start_advertising(&adv_params);
     if (ret != HAL_BLE_OK) {
         LOG_ERROR("Failed to start advertising: %d", ret);
         return BLE_TRANSPORT_ERROR;
     }
 
     transport_state.state = BLE_TRANSPORT_STATE_ADVERTISING;
+    transport_state.low_power_mode = true;
+
+    /* Update global activity timestamp */
+    update_global_activity_timestamp();
 
     /* Set LED pattern for advertising (slow blink) */
     led_set_pattern(LED_PATTERN_BLE_ADVERTISING);
 
-    LOG_INFO("BLE transport started (advertising)");
+    LOG_INFO("BLE transport started (advertising in low-power mode)");
 
     return BLE_TRANSPORT_OK;
 }
@@ -334,6 +363,9 @@ int ble_transport_process_request(const uint8_t *data, size_t len)
 
         /* Update activity timestamp after processing */
         update_activity_timestamp();
+
+        /* Return to idle connection parameters after operation completes */
+        set_connection_params_idle();
     }
 
     return BLE_TRANSPORT_OK;
@@ -458,6 +490,104 @@ int ble_transport_disconnect(void)
     return BLE_TRANSPORT_OK;
 }
 
+/* ========== Power Management ========== */
+
+bool ble_transport_should_enter_deep_sleep(void)
+{
+    if (!transport_state.initialized) {
+        return false;
+    }
+
+    /* Don't sleep if connected or processing */
+    if (transport_state.connection.is_connected ||
+        transport_state.state == BLE_TRANSPORT_STATE_PROCESSING) {
+        return false;
+    }
+
+    uint64_t current_time = get_time_ms();
+    uint64_t idle_time = current_time - transport_state.last_global_activity_ms;
+
+    /* Check if we've been idle long enough for deep sleep */
+    return (idle_time >= BLE_DEEP_SLEEP_TIMEOUT_MS);
+}
+
+void ble_transport_update_power_state(void)
+{
+    if (!transport_state.initialized) {
+        return;
+    }
+
+    update_connection_state();
+}
+
+int ble_transport_enter_deep_sleep(void)
+{
+    if (!transport_state.initialized) {
+        return BLE_TRANSPORT_ERROR_NOT_INITIALIZED;
+    }
+
+    /* Don't enter deep sleep if connected or processing */
+    if (transport_state.connection.is_connected ||
+        transport_state.state == BLE_TRANSPORT_STATE_PROCESSING) {
+        LOG_WARN("Cannot enter deep sleep: device is active");
+        return BLE_TRANSPORT_ERROR_BUSY;
+    }
+
+    LOG_INFO("Entering deep sleep mode");
+
+    /* Stop advertising before deep sleep */
+    hal_ble_stop_advertising();
+
+    /* Enter deep sleep via HAL */
+    int ret = hal_ble_enter_deep_sleep();
+    if (ret != HAL_BLE_OK) {
+        LOG_ERROR("Failed to enter deep sleep: %d", ret);
+        /* Restart advertising if deep sleep failed */
+        hal_ble_start_advertising(NULL);
+        return BLE_TRANSPORT_ERROR;
+    }
+
+    /* Update state */
+    transport_state.state = BLE_TRANSPORT_STATE_IDLE;
+
+    /* Turn off LED */
+    led_set_pattern(LED_PATTERN_IDLE);
+
+    LOG_INFO("Deep sleep mode entered");
+
+    return BLE_TRANSPORT_OK;
+}
+
+int ble_transport_wake_from_deep_sleep(void)
+{
+    if (!transport_state.initialized) {
+        return BLE_TRANSPORT_ERROR_NOT_INITIALIZED;
+    }
+
+    LOG_INFO("Waking from deep sleep mode");
+
+    /* Wake from deep sleep via HAL */
+    int ret = hal_ble_wake_from_sleep();
+    if (ret != HAL_BLE_OK) {
+        LOG_ERROR("Failed to wake from deep sleep: %d", ret);
+        return BLE_TRANSPORT_ERROR;
+    }
+
+    /* Update activity timestamp */
+    update_global_activity_timestamp();
+
+    /* Restart advertising */
+    ret = ble_transport_start();
+    if (ret != BLE_TRANSPORT_OK) {
+        LOG_ERROR("Failed to restart advertising after wake: %d", ret);
+        return BLE_TRANSPORT_ERROR;
+    }
+
+    LOG_INFO("Woke from deep sleep mode");
+
+    return BLE_TRANSPORT_OK;
+}
+
 /* ========== Helper Functions ========== */
 
 /**
@@ -476,6 +606,7 @@ static uint64_t get_time_ms(void)
 static void update_activity_timestamp(void)
 {
     transport_state.connection.last_activity_ms = get_time_ms();
+    update_global_activity_timestamp();
 }
 
 /**
@@ -483,18 +614,28 @@ static void update_activity_timestamp(void)
  */
 static void update_connection_state(void)
 {
-    if (!transport_state.connection.is_connected) {
-        return;
-    }
-
     uint64_t current_time = get_time_ms();
-    uint64_t idle_time = current_time - transport_state.connection.last_activity_ms;
 
-    /* Check if we should switch to idle connection parameters */
-    if (idle_time >= BLE_IDLE_TIMEOUT_MS &&
-        transport_state.state == BLE_TRANSPORT_STATE_CONNECTED) {
-        LOG_DEBUG("Connection idle for %llu ms, switching to low-power params", idle_time);
-        set_connection_params_idle();
+    /* Handle connected state power management */
+    if (transport_state.connection.is_connected) {
+        uint64_t idle_time = current_time - transport_state.connection.last_activity_ms;
+
+        /* Check if we should switch to idle connection parameters */
+        if (idle_time >= BLE_IDLE_TIMEOUT_MS &&
+            transport_state.state == BLE_TRANSPORT_STATE_CONNECTED) {
+            LOG_DEBUG("Connection idle for %llu ms, switching to low-power params", idle_time);
+            set_connection_params_idle();
+        }
+    }
+    /* Handle advertising state power management */
+    else if (transport_state.state == BLE_TRANSPORT_STATE_ADVERTISING) {
+        uint64_t idle_time = current_time - transport_state.last_global_activity_ms;
+
+        /* Enter low-power advertising after idle timeout */
+        if (idle_time >= BLE_IDLE_TIMEOUT_MS && !transport_state.low_power_mode) {
+            LOG_DEBUG("Advertising idle for %llu ms, entering low-power mode", idle_time);
+            enter_low_power_mode();
+        }
     }
 }
 
@@ -544,6 +685,80 @@ static int set_connection_params_idle(void)
         LOG_WARN("Failed to update connection params: %d", ret);
         return BLE_TRANSPORT_ERROR;
     }
+
+    return BLE_TRANSPORT_OK;
+}
+
+/* ========== Power Management Functions ========== */
+
+/**
+ * @brief Update global activity timestamp
+ *
+ * Updates the global activity timestamp used for deep sleep timeout.
+ */
+static void update_global_activity_timestamp(void)
+{
+    transport_state.last_global_activity_ms = get_time_ms();
+}
+
+/**
+ * @brief Enter low-power mode
+ *
+ * Switches to low-power advertising intervals when not connected.
+ *
+ * @return 0 on success, negative error code otherwise
+ */
+static int enter_low_power_mode(void)
+{
+    if (transport_state.low_power_mode) {
+        return BLE_TRANSPORT_OK; /* Already in low-power mode */
+    }
+
+    LOG_INFO("Entering low-power mode");
+
+    /* Configure low-power advertising if not connected */
+    if (transport_state.state == BLE_TRANSPORT_STATE_ADVERTISING) {
+        int ret = hal_ble_set_low_power_advertising(true);
+        if (ret != HAL_BLE_OK) {
+            LOG_WARN("Failed to set low-power advertising: %d", ret);
+            return BLE_TRANSPORT_ERROR;
+        }
+    }
+
+    transport_state.low_power_mode = true;
+
+    LOG_INFO("Low-power mode enabled");
+
+    return BLE_TRANSPORT_OK;
+}
+
+/**
+ * @brief Exit low-power mode
+ *
+ * Switches to normal advertising intervals for faster connection.
+ *
+ * @return 0 on success, negative error code otherwise
+ */
+static int exit_low_power_mode(void)
+{
+    if (!transport_state.low_power_mode) {
+        return BLE_TRANSPORT_OK; /* Already in normal mode */
+    }
+
+    LOG_INFO("Exiting low-power mode");
+
+    /* Configure normal advertising if not connected */
+    if (transport_state.state == BLE_TRANSPORT_STATE_ADVERTISING) {
+        int ret = hal_ble_set_low_power_advertising(false);
+        if (ret != HAL_BLE_OK) {
+            LOG_WARN("Failed to set normal advertising: %d", ret);
+            return BLE_TRANSPORT_ERROR;
+        }
+    }
+
+    transport_state.low_power_mode = false;
+
+    LOG_INFO("Low-power mode disabled");
 
     return BLE_TRANSPORT_OK;
 }
@@ -673,6 +888,9 @@ static void on_ble_event(const hal_ble_event_t *event)
     switch (event->type) {
         case HAL_BLE_EVENT_CONNECTED:
             LOG_INFO("BLE connected: conn_handle=%d", event->conn_handle);
+
+            /* Exit low-power mode on connection */
+            exit_low_power_mode();
 
             /* Update connection state */
             transport_state.connection.conn_handle = event->conn_handle;

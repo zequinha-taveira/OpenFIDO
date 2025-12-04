@@ -205,14 +205,22 @@
     - Update LED state based on BLE transport state
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 9. Implement power management
-  - [ ] 9.1 Add power management to BLE transport
+- [x] 9. Implement power management
+
+
+
+
+  - [x] 9.1 Add power management to BLE transport
+
+
     - Use low-power advertising intervals when not connected
     - Negotiate long connection intervals when idle
     - Return to low-power state after operations
     - _Requirements: 9.1, 9.2, 9.3_
 
-  - [ ] 9.2 Implement idle timeout and deep sleep
+  - [x] 9.2 Implement idle timeout and deep sleep
+
+
     - Track last activity timestamp
     - Enter deep sleep after 5 minutes of inactivity
     - Wake on button press or BLE connection

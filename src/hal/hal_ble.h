@@ -361,6 +361,38 @@ int hal_ble_set_device_name(const char *name);
  */
 int hal_ble_get_address(uint8_t addr[6]);
 
+/* ========== BLE Power Management ========== */
+
+/**
+ * @brief Set low-power advertising mode
+ *
+ * Configures advertising to use low-power intervals for battery efficiency.
+ * Typically uses longer advertising intervals (e.g., 1-2 seconds).
+ *
+ * @param enable true to enable low-power mode, false for normal mode
+ * @return HAL_BLE_OK on success, error code otherwise
+ */
+int hal_ble_set_low_power_advertising(bool enable);
+
+/**
+ * @brief Enter deep sleep mode
+ *
+ * Puts the BLE stack and device into deep sleep mode to conserve power.
+ * The device can be woken by button press or BLE connection request.
+ *
+ * @return HAL_BLE_OK on success, error code otherwise
+ */
+int hal_ble_enter_deep_sleep(void);
+
+/**
+ * @brief Wake from deep sleep mode
+ *
+ * Wakes the BLE stack from deep sleep mode.
+ *
+ * @return HAL_BLE_OK on success, error code otherwise
+ */
+int hal_ble_wake_from_sleep(void);
+
 /* ========== GATT Characteristic Properties ========== */
 
 /**

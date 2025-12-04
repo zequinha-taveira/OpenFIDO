@@ -161,3 +161,21 @@ int hal_ble_get_address(uint8_t addr[6])
     (void) addr;
     return HAL_BLE_ERROR_NOT_SUPPORTED;
 }
+
+/* ========== Power Management ========== */
+
+int hal_ble_set_low_power_advertising(bool enable)
+{
+    (void) enable;
+    return HAL_BLE_ERROR_NOT_SUPPORTED;
+}
+
+int hal_ble_enter_deep_sleep(void)
+{
+    return HAL_BLE_ERROR_NOT_SUPPORTED;
+}
+
+int hal_ble_wake_from_sleep(void)
+{
+    return HAL_BLE_ERROR_NOT_SUPPORTED;
+}

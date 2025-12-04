@@ -280,6 +280,24 @@ static void main_loop(void)
         /* Feed watchdog */
         hal_watchdog_feed();
 
+        /* Update BLE power management state */
+        if (hal_ble_is_supported()) {
+            ble_transport_update_power_state();
+
+            /* Check if we should enter deep sleep */
+            if (ble_transport_should_enter_deep_sleep()) {
+                LOG_INFO("Entering deep sleep due to inactivity");
+                ble_transport_enter_deep_sleep();
+
+                /* Also put the main system into deep sleep */
+                hal_enter_deep_sleep();
+
+                /* When we wake up, wake the BLE transport */
+                LOG_INFO("Waking from deep sleep");
+                ble_transport_wake_from_deep_sleep();
+            }
+        }
+
         /* Poll USB transport for data */
         uint8_t cmd = 0;
         bytes_received =
