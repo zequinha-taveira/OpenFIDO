@@ -238,8 +238,7 @@ int ble_transport_start(void)
             }
             LOG_INFO("BLE stack recovered successfully");
         } else {
-            LOG_ERROR("BLE stack recovery failed: %s (code=%d)",
-                      hal_ble_error_to_string(ret), ret);
+            LOG_ERROR("BLE stack recovery failed: %s (code=%d)", hal_ble_error_to_string(ret), ret);
             return BLE_TRANSPORT_ERROR;
         }
     }
@@ -407,9 +406,10 @@ int ble_transport_process_request(const uint8_t *data, size_t len)
 
         /* Check if another transport has an operation in progress */
         if (transport_is_busy() && !transport_is_active(TRANSPORT_TYPE_BLE)) {
-            LOG_WARN("Operation in progress on another transport, rejecting BLE request "
-                     "(active_transport=%d)",
-                     transport_get_active());
+            LOG_WARN(
+                "Operation in progress on another transport, rejecting BLE request "
+                "(active_transport=%d)",
+                transport_get_active());
             cleanup_operation_state();
             /* Send CTAP error response for channel busy */
             send_ctap_error_response(0x06); /* CTAP2_ERR_CHANNEL_BUSY */
@@ -511,8 +511,8 @@ int ble_transport_send_response(const uint8_t *data, size_t len)
     int ret = ble_fragment_create(data, len, fragments, fragment_sizes, &num_fragments,
                                   transport_state.connection.mtu);
     if (ret != BLE_FRAGMENT_OK) {
-        LOG_ERROR("Failed to create fragments: error=%d, len=%zu, mtu=%d, conn_handle=%d", ret,
-                  len, transport_state.connection.mtu, transport_state.connection.conn_handle);
+        LOG_ERROR("Failed to create fragments: error=%d, len=%zu, mtu=%d, conn_handle=%d", ret, len,
+                  transport_state.connection.mtu, transport_state.connection.conn_handle);
 
         /* Log specific fragment creation errors */
         if (ret == BLE_FRAGMENT_ERROR_NO_MEM) {
@@ -906,8 +906,8 @@ static int exit_low_power_mode(void)
     if (transport_state.state == BLE_TRANSPORT_STATE_ADVERTISING) {
         int ret = hal_ble_set_low_power_advertising(false);
         if (ret != HAL_BLE_OK) {
-            LOG_WARN("Failed to set normal advertising: %s (code=%d)",
-                     hal_ble_error_to_string(ret), ret);
+            LOG_WARN("Failed to set normal advertising: %s (code=%d)", hal_ble_error_to_string(ret),
+                     ret);
             return BLE_TRANSPORT_ERROR;
         }
     }
@@ -994,9 +994,10 @@ static void handle_pairing_complete(const hal_ble_event_t *event)
     if (ret == HAL_BLE_OK) {
         transport_state.connection.is_encrypted = encrypted;
         if (!encrypted) {
-            LOG_ERROR("Pairing complete but connection not encrypted! (conn_handle=%d) - "
-                      "SECURITY VIOLATION",
-                      event->conn_handle);
+            LOG_ERROR(
+                "Pairing complete but connection not encrypted! (conn_handle=%d) - "
+                "SECURITY VIOLATION",
+                event->conn_handle);
             /* Disconnect if encryption is not enabled */
             ret = hal_ble_disconnect(event->conn_handle);
             if (ret != HAL_BLE_OK) {
@@ -1004,8 +1005,7 @@ static void handle_pairing_complete(const hal_ble_event_t *event)
                           hal_ble_error_to_string(ret), ret);
             }
         } else {
-            LOG_INFO("Connection is now encrypted and paired (conn_handle=%d)",
-                     event->conn_handle);
+            LOG_INFO("Connection is now encrypted and paired (conn_handle=%d)", event->conn_handle);
         }
     } else {
         LOG_ERROR("Failed to check encryption status after pairing: %s (code=%d, conn_handle=%d)",
@@ -1038,11 +1038,12 @@ static void handle_pairing_failed(const hal_ble_event_t *event)
         transport_state.connection.pairing_block_until_ms =
             current_time + BLE_PAIRING_BLOCK_DURATION_MS;
 
-        LOG_ERROR("Maximum pairing attempts reached (%d/%d). Blocking pairing for %d seconds "
-                  "(until timestamp=%llu)",
-                  transport_state.connection.pairing_attempts, BLE_MAX_PAIRING_ATTEMPTS,
-                  BLE_PAIRING_BLOCK_DURATION_MS / 1000,
-                  transport_state.connection.pairing_block_until_ms);
+        LOG_ERROR(
+            "Maximum pairing attempts reached (%d/%d). Blocking pairing for %d seconds "
+            "(until timestamp=%llu)",
+            transport_state.connection.pairing_attempts, BLE_MAX_PAIRING_ATTEMPTS,
+            BLE_PAIRING_BLOCK_DURATION_MS / 1000,
+            transport_state.connection.pairing_block_until_ms);
 
         /* Disconnect the connection */
         int ret = hal_ble_disconnect(event->conn_handle);
@@ -1127,10 +1128,11 @@ static void on_ble_event(const hal_ble_event_t *event)
 
             /* Check if fragment reassembly was in progress */
             if (transport_state.rx_fragment.in_progress) {
-                LOG_WARN("Connection lost during fragment reassembly (received=%zu/%zu) - "
-                         "discarding partial message",
-                         transport_state.rx_fragment.received_len,
-                         transport_state.rx_fragment.total_len);
+                LOG_WARN(
+                    "Connection lost during fragment reassembly (received=%zu/%zu) - "
+                    "discarding partial message",
+                    transport_state.rx_fragment.received_len,
+                    transport_state.rx_fragment.total_len);
                 ble_fragment_reset(&transport_state.rx_fragment);
             }
 
@@ -1166,9 +1168,10 @@ static void on_ble_event(const hal_ble_event_t *event)
                 hal_ble_stop_advertising();
                 ret = hal_ble_start_advertising(NULL);
                 if (ret != HAL_BLE_OK) {
-                    LOG_ERROR("Failed to recover advertising: %s (code=%d) - BLE transport "
-                              "unavailable",
-                              hal_ble_error_to_string(ret), ret);
+                    LOG_ERROR(
+                        "Failed to recover advertising: %s (code=%d) - BLE transport "
+                        "unavailable",
+                        hal_ble_error_to_string(ret), ret);
                     transport_state.state = BLE_TRANSPORT_STATE_IDLE;
                     led_set_pattern(LED_PATTERN_IDLE);
                 } else {
@@ -1252,8 +1255,7 @@ static void on_ble_event(const hal_ble_event_t *event)
                     cleanup_operation_state();
                 }
                 /* Disconnect the insecure connection immediately */
-                LOG_ERROR("Disconnecting insecure connection (conn_handle=%d)",
-                          event->conn_handle);
+                LOG_ERROR("Disconnecting insecure connection (conn_handle=%d)", event->conn_handle);
                 ret = hal_ble_disconnect(event->conn_handle);
                 if (ret != HAL_BLE_OK) {
                     LOG_ERROR("Failed to disconnect insecure connection: %s (code=%d)",
@@ -1347,8 +1349,7 @@ static int send_ctap_error_response(uint8_t error_code)
 
     int ret = ble_transport_send_response(response, sizeof(response));
     if (ret != BLE_TRANSPORT_OK) {
-        LOG_ERROR("Failed to send CTAP error response: %s",
-                  ble_transport_error_to_string(ret));
+        LOG_ERROR("Failed to send CTAP error response: %s", ble_transport_error_to_string(ret));
         return ret;
     }
 
