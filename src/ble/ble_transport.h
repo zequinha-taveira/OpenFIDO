@@ -152,24 +152,24 @@ uint16_t ble_transport_get_mtu(void);
 
 /**
  * @brief Check if connection is encrypted
- * 
+ *
  * @return true if connection is encrypted, false otherwise
  */
 bool ble_transport_is_encrypted(void);
 
 /**
  * @brief Check if connection is paired
- * 
+ *
  * @return true if connection is paired, false otherwise
  */
 bool ble_transport_is_paired(void);
 
 /**
  * @brief Get last activity timestamp
- * 
+ *
  * Returns the timestamp of the last BLE activity (message received or sent).
  * Used for idle timeout detection and power management.
- * 
+ *
  * @return Last activity timestamp in milliseconds
  */
 uint64_t ble_transport_get_last_activity_ms(void);
