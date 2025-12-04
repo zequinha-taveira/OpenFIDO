@@ -92,11 +92,8 @@ static int init_subsystems(void)
 
     /* Initialize BLE transport if supported */
     if (hal_ble_is_supported()) {
-        LOG_INFO("Initializing BLE transport...");
-        
-        /* BLE callbacks will be set up later in main loop initialization */
-        /* For now, we just check if it's supported */
         LOG_INFO("BLE is supported on this platform");
+        LOG_INFO("BLE transport will be initialized in main loop");
     } else {
         LOG_INFO("BLE not supported on this platform, continuing with USB only");
     }
@@ -164,6 +161,23 @@ static void on_ble_ctap_request(const uint8_t *data, size_t len)
         return;
     }
 
+    /* Check if another operation is in progress */
+    if (transport_is_busy()) {
+        LOG_WARN("Operation already in progress on another transport, rejecting BLE request");
+        /* Send CTAP2_ERR_OPERATION_DENIED error response */
+        uint8_t error_response[1] = {0x2E}; /* CTAP2_ERR_OPERATION_DENIED */
+        transport_send_on(TRANSPORT_TYPE_BLE, error_response, 1);
+        return;
+    }
+
+    /* Set BLE as active transport and lock it for this operation */
+    transport_set_active(TRANSPORT_TYPE_BLE);
+    transport_lock(TRANSPORT_TYPE_BLE);
+    transport_set_busy(true);
+
+    /* Indicate activity */
+    hal_led_set_state(HAL_LED_ON);
+
     /* Parse CTAP2 request */
     request.cmd = data[0];
     request.data = (len > 1) ? &data[1] : NULL;
@@ -187,6 +201,13 @@ static void on_ble_ctap_request(const uint8_t *data, size_t len)
     } else {
         LOG_DEBUG("Sent %d bytes BLE response (status: 0x%02X)", total_len, response.status);
     }
+
+    /* Clear operation state */
+    transport_set_busy(false);
+    transport_unlock();
+
+    /* Return to idle state */
+    hal_led_set_state(HAL_LED_BLINK_SLOW);
 }
 
 /**
@@ -221,6 +242,8 @@ static void main_loop(void)
 
     /* Initialize and start BLE transport if supported */
     if (hal_ble_is_supported()) {
+        LOG_INFO("Initializing BLE transport...");
+        
         ble_transport_callbacks_t ble_callbacks = {
             .on_ctap_request = on_ble_ctap_request,
             .on_connection_change = on_ble_connection_change
@@ -228,15 +251,19 @@ static void main_loop(void)
 
         int ret = ble_transport_init(&ble_callbacks);
         if (ret == BLE_TRANSPORT_OK) {
+            LOG_INFO("BLE transport initialized successfully");
+            
             /* Register BLE with transport abstraction */
             ret = ble_transport_register();
             if (ret == BLE_TRANSPORT_OK) {
+                LOG_INFO("BLE transport registered with transport abstraction");
+                
                 /* Start BLE advertising */
                 ret = ble_transport_start();
                 if (ret == BLE_TRANSPORT_OK) {
-                    LOG_INFO("BLE transport started successfully");
+                    LOG_INFO("BLE advertising started - device is discoverable");
                 } else {
-                    LOG_ERROR("Failed to start BLE transport: %d", ret);
+                    LOG_ERROR("Failed to start BLE advertising: %d", ret);
                 }
             } else {
                 LOG_ERROR("Failed to register BLE transport: %d", ret);
@@ -259,8 +286,9 @@ static void main_loop(void)
 
             /* Check if another operation is in progress */
             if (transport_is_busy()) {
-                LOG_WARN("Operation already in progress, rejecting request");
-                /* In a real implementation, we would send a CTAPHID_ERROR response */
+                LOG_WARN("Operation already in progress on another transport, rejecting USB request");
+                /* Send CTAPHID_ERROR response */
+                /* For now, just continue to next iteration */
                 continue;
             }
 
@@ -321,6 +349,9 @@ static void main_loop(void)
                For now, we just switch back. */
             hal_led_set_state(HAL_LED_BLINK_SLOW);
         }
+
+        /* BLE transport uses callbacks, so no polling needed */
+        /* BLE requests are handled asynchronously via on_ble_ctap_request callback */
 
         /* Small delay to prevent busy-waiting */
         hal_delay_ms(10);

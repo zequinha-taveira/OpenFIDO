@@ -164,21 +164,29 @@
     - Handle transport switching and queuing
     - _Requirements: 5.1, 5.2_
 
-- [ ] 7. Integrate BLE transport with main application
-  - [ ] 7.1 Update `src/main.c` to initialize BLE transport
+- [x] 7. Integrate BLE transport with main application
+
+
+
+
+  - [x] 7.1 Update `src/main.c` to initialize BLE transport
+
+
     - Check if BLE is supported via HAL
     - Initialize BLE transport if available
     - Start BLE advertising
     - Log BLE status
     - _Requirements: 1.1, 6.2, 8.2_
 
-  - [ ] 7.2 Update main loop to handle both USB and BLE transports
+  - [x] 7.2 Update main loop to handle both USB and BLE transports
+
     - Poll both transports for incoming data
     - Route CTAP requests through transport abstraction
     - Send responses on correct transport
     - _Requirements: 5.1, 5.2, 5.3_
 
-  - [ ] 7.3 Implement transport coordination
+  - [x] 7.3 Implement transport coordination
+
     - Queue or reject commands when operation is in progress
     - Maintain authenticator state consistency across transports
     - _Requirements: 5.2, 5.4_
