@@ -50,14 +50,24 @@
   - Confirm final image contains openfido executable
   - _Requirements: 1.2, 1.5_
 
-- [ ] 4. Create build validation script
+- [x] 4. Create build validation script
+
+
+
+
+
   - Write script to parse CMakeLists.txt and extract all source file references
   - Verify each referenced file exists in the filesystem
   - Script should exit with error if any file is missing
   - **Property 1: Source file existence**
   - **Validates: Requirements 1.1**
 
-- [ ] 5. Test error handling for invalid file references
+- [x] 5. Test error handling for invalid file references
+
+
+
+
+
   - Temporarily add a non-existent file to CMakeLists.txt
   - Run CMake configuration and verify it fails
   - Confirm error message clearly identifies the missing file
