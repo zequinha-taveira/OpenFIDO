@@ -44,16 +44,13 @@ typedef struct {
 static ble_transport_ctx_t transport_state = {
     .initialized = false,
     .state = BLE_TRANSPORT_STATE_IDLE,
-    .connection = {
-        .conn_handle = HAL_BLE_CONN_HANDLE_INVALID,
-        .is_connected = false,
-        .is_encrypted = false,
-        .is_paired = false,
-        .mtu = BLE_FRAGMENT_DEFAULT_MTU,
-        .last_activity_ms = 0,
-        .connection_time_ms = 0
-    }
-};
+    .connection = {.conn_handle = HAL_BLE_CONN_HANDLE_INVALID,
+                   .is_connected = false,
+                   .is_encrypted = false,
+                   .is_paired = false,
+                   .mtu = BLE_FRAGMENT_DEFAULT_MTU,
+                   .last_activity_ms = 0,
+                   .connection_time_ms = 0}};
 
 /* ========== Connection Parameters ========== */
 
@@ -259,7 +256,7 @@ int ble_transport_process_request(const uint8_t *data, size_t len)
 
         /* Return to connected state */
         transport_state.state = BLE_TRANSPORT_STATE_CONNECTED;
-        
+
         /* Update activity timestamp after processing */
         update_activity_timestamp();
     }
@@ -321,7 +318,7 @@ int ble_transport_send_response(const uint8_t *data, size_t len)
     }
 
     LOG_INFO("CTAP response sent successfully");
-    
+
     /* Update activity timestamp after sending */
     update_activity_timestamp();
 
@@ -378,7 +375,7 @@ int ble_transport_disconnect(void)
 
 /**
  * @brief Get current time in milliseconds
- * 
+ *
  * @return Current time in milliseconds
  */
 static uint64_t get_time_ms(void)
@@ -411,7 +408,7 @@ static void update_connection_state(void)
     uint64_t idle_time = current_time - transport_state.connection.last_activity_ms;
 
     /* Check if we should switch to idle connection parameters */
-    if (idle_time >= BLE_IDLE_TIMEOUT_MS && 
+    if (idle_time >= BLE_IDLE_TIMEOUT_MS &&
         transport_state.state == BLE_TRANSPORT_STATE_CONNECTED) {
         LOG_DEBUG("Connection idle for %llu ms, switching to low-power params", idle_time);
         set_connection_params_idle();
@@ -420,7 +417,7 @@ static void update_connection_state(void)
 
 /**
  * @brief Set connection parameters for active operations
- * 
+ *
  * @return 0 on success, negative error code otherwise
  */
 static int set_connection_params_active(void)
@@ -432,12 +429,8 @@ static int set_connection_params_active(void)
     LOG_DEBUG("Setting active connection parameters");
 
     int ret = hal_ble_update_connection_params(
-        transport_state.connection.conn_handle,
-        BLE_CONN_INTERVAL_ACTIVE_MIN_MS,
-        BLE_CONN_INTERVAL_ACTIVE_MAX_MS,
-        BLE_CONN_LATENCY,
-        BLE_CONN_TIMEOUT_MS
-    );
+        transport_state.connection.conn_handle, BLE_CONN_INTERVAL_ACTIVE_MIN_MS,
+        BLE_CONN_INTERVAL_ACTIVE_MAX_MS, BLE_CONN_LATENCY, BLE_CONN_TIMEOUT_MS);
 
     if (ret != HAL_BLE_OK) {
         LOG_WARN("Failed to update connection params: %d", ret);
@@ -449,7 +442,7 @@ static int set_connection_params_active(void)
 
 /**
  * @brief Set connection parameters for idle/low-power state
- * 
+ *
  * @return 0 on success, negative error code otherwise
  */
 static int set_connection_params_idle(void)
@@ -461,12 +454,8 @@ static int set_connection_params_idle(void)
     LOG_DEBUG("Setting idle connection parameters");
 
     int ret = hal_ble_update_connection_params(
-        transport_state.connection.conn_handle,
-        BLE_CONN_INTERVAL_IDLE_MIN_MS,
-        BLE_CONN_INTERVAL_IDLE_MAX_MS,
-        BLE_CONN_LATENCY,
-        BLE_CONN_TIMEOUT_MS
-    );
+        transport_state.connection.conn_handle, BLE_CONN_INTERVAL_IDLE_MIN_MS,
+        BLE_CONN_INTERVAL_IDLE_MAX_MS, BLE_CONN_LATENCY, BLE_CONN_TIMEOUT_MS);
 
     if (ret != HAL_BLE_OK) {
         LOG_WARN("Failed to update connection params: %d", ret);
@@ -487,7 +476,7 @@ static void on_ble_event(const hal_ble_event_t *event)
     switch (event->type) {
         case HAL_BLE_EVENT_CONNECTED:
             LOG_INFO("BLE connected: conn_handle=%d", event->conn_handle);
-            
+
             /* Update connection state */
             transport_state.connection.conn_handle = event->conn_handle;
             transport_state.connection.is_connected = true;
@@ -495,17 +484,17 @@ static void on_ble_event(const hal_ble_event_t *event)
             transport_state.connection.is_paired = false;
             transport_state.connection.connection_time_ms = get_time_ms();
             update_activity_timestamp();
-            
+
             /* Get MTU */
             hal_ble_get_mtu(event->conn_handle, &transport_state.connection.mtu);
             LOG_INFO("Connection MTU: %d", transport_state.connection.mtu);
-            
+
             /* Set active connection parameters for initial connection */
             set_connection_params_active();
-            
+
             /* Update transport state */
             transport_state.state = BLE_TRANSPORT_STATE_CONNECTED;
-            
+
             /* Reset fragment buffer */
             ble_fragment_reset(&transport_state.rx_fragment);
 
@@ -517,7 +506,7 @@ static void on_ble_event(const hal_ble_event_t *event)
 
         case HAL_BLE_EVENT_DISCONNECTED:
             LOG_INFO("BLE disconnected: conn_handle=%d", event->conn_handle);
-            
+
             /* Reset connection state */
             transport_state.connection.conn_handle = HAL_BLE_CONN_HANDLE_INVALID;
             transport_state.connection.is_connected = false;
@@ -525,7 +514,7 @@ static void on_ble_event(const hal_ble_event_t *event)
             transport_state.connection.is_paired = false;
             transport_state.connection.last_activity_ms = 0;
             transport_state.connection.connection_time_ms = 0;
-            
+
             /* Update transport state */
             transport_state.state = BLE_TRANSPORT_STATE_ADVERTISING;
 
@@ -544,7 +533,7 @@ static void on_ble_event(const hal_ble_event_t *event)
         case HAL_BLE_EVENT_WRITE:
             /* Update activity timestamp */
             update_activity_timestamp();
-            
+
             /* Handle Control Point writes */
             if (event->char_handle == ble_fido_service_get_control_point_handle()) {
                 ble_fido_service_on_control_point_write(event->conn_handle, event->data,
@@ -574,7 +563,7 @@ static void on_ble_event(const hal_ble_event_t *event)
         case HAL_BLE_EVENT_ENCRYPTION_CHANGED:
             LOG_INFO("Encryption changed: encrypted=%d", event->encrypted);
             transport_state.connection.is_encrypted = event->encrypted;
-            
+
             /* Check encryption status */
             if (!event->encrypted) {
                 LOG_WARN("Connection is not encrypted");
@@ -584,7 +573,7 @@ static void on_ble_event(const hal_ble_event_t *event)
         case HAL_BLE_EVENT_PAIRING_COMPLETE:
             LOG_INFO("Pairing complete");
             transport_state.connection.is_paired = true;
-            
+
             /* Verify encryption is enabled after pairing */
             bool encrypted = false;
             if (hal_ble_is_encrypted(event->conn_handle, &encrypted) == HAL_BLE_OK) {
