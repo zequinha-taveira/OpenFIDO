@@ -7,16 +7,19 @@
  */
 
 #include "ble_fragment.h"
-#include "../utils/logger.h"
+
 #include <stdlib.h>
 #include <string.h>
+
+#include "../utils/logger.h"
 
 /* Static buffer for message reassembly */
 static uint8_t reassembly_buffer[BLE_FRAGMENT_MAX_MESSAGE_SIZE];
 
 /* ========== Fragment Buffer Management ========== */
 
-void ble_fragment_init(ble_fragment_buffer_t *frag) {
+void ble_fragment_init(ble_fragment_buffer_t *frag)
+{
     if (frag == NULL) {
         return;
     }
@@ -28,7 +31,8 @@ void ble_fragment_init(ble_fragment_buffer_t *frag) {
     frag->in_progress = false;
 }
 
-int ble_fragment_add(ble_fragment_buffer_t *frag, const uint8_t *data, size_t len) {
+int ble_fragment_add(ble_fragment_buffer_t *frag, const uint8_t *data, size_t len)
+{
     if (frag == NULL || data == NULL || len == 0) {
         return BLE_FRAGMENT_ERROR_INVALID_PARAM;
     }
@@ -46,7 +50,7 @@ int ble_fragment_add(ble_fragment_buffer_t *frag, const uint8_t *data, size_t le
         }
 
         /* Extract total length (big-endian) */
-        uint16_t total_len = ((uint16_t)data[1] << 8) | data[2];
+        uint16_t total_len = ((uint16_t) data[1] << 8) | data[2];
 
         if (total_len > BLE_FRAGMENT_MAX_MESSAGE_SIZE) {
             LOG_ERROR("Message too large: %u bytes", total_len);
@@ -94,7 +98,8 @@ int ble_fragment_add(ble_fragment_buffer_t *frag, const uint8_t *data, size_t le
         memcpy(&frag->buffer[frag->received_len], &data[1], data_len);
         frag->received_len += data_len;
 
-        LOG_DEBUG("CONT fragment seq=%u: received=%zu/%zu", seq, frag->received_len, frag->total_len);
+        LOG_DEBUG("CONT fragment seq=%u: received=%zu/%zu", seq, frag->received_len,
+                  frag->total_len);
     }
 
     /* Increment sequence number for next fragment */
@@ -103,7 +108,8 @@ int ble_fragment_add(ble_fragment_buffer_t *frag, const uint8_t *data, size_t le
     return BLE_FRAGMENT_OK;
 }
 
-bool ble_fragment_is_complete(const ble_fragment_buffer_t *frag) {
+bool ble_fragment_is_complete(const ble_fragment_buffer_t *frag)
+{
     if (frag == NULL || !frag->in_progress) {
         return false;
     }
@@ -111,7 +117,8 @@ bool ble_fragment_is_complete(const ble_fragment_buffer_t *frag) {
     return frag->received_len >= frag->total_len;
 }
 
-int ble_fragment_get_message(const ble_fragment_buffer_t *frag, uint8_t **data, size_t *len) {
+int ble_fragment_get_message(const ble_fragment_buffer_t *frag, uint8_t **data, size_t *len)
+{
     if (frag == NULL || data == NULL || len == NULL) {
         return BLE_FRAGMENT_ERROR_INVALID_PARAM;
     }
@@ -126,7 +133,8 @@ int ble_fragment_get_message(const ble_fragment_buffer_t *frag, uint8_t **data, 
     return BLE_FRAGMENT_OK;
 }
 
-void ble_fragment_reset(ble_fragment_buffer_t *frag) {
+void ble_fragment_reset(ble_fragment_buffer_t *frag)
+{
     if (frag == NULL) {
         return;
     }
@@ -139,8 +147,9 @@ void ble_fragment_reset(ble_fragment_buffer_t *frag) {
 
 /* ========== Fragment Creation ========== */
 
-int ble_fragment_create(const uint8_t *data, size_t len, uint8_t *fragments[], 
-                        size_t fragment_sizes[], size_t *num_fragments, size_t mtu) {
+int ble_fragment_create(const uint8_t *data, size_t len, uint8_t *fragments[],
+                        size_t fragment_sizes[], size_t *num_fragments, size_t mtu)
+{
     if (data == NULL || fragments == NULL || fragment_sizes == NULL || num_fragments == NULL) {
         return BLE_FRAGMENT_ERROR_INVALID_PARAM;
     }
