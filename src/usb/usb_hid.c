@@ -216,12 +216,10 @@ int usb_hid_register_transport(void)
 {
     LOG_INFO("Registering USB HID with transport abstraction");
 
-    transport_ops_t ops = {
-        .send = usb_hid_send,
-        .receive = usb_hid_receive,
-        .is_connected = usb_hid_is_connected,
-        .get_name = usb_transport_get_name
-    };
+    transport_ops_t ops = {.send = usb_hid_send,
+                           .receive = usb_hid_receive,
+                           .is_connected = usb_hid_is_connected,
+                           .get_name = usb_transport_get_name};
 
     int ret = transport_register(TRANSPORT_TYPE_USB, &ops);
     if (ret != TRANSPORT_OK) {

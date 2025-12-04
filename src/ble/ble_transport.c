@@ -808,7 +808,7 @@ static int ble_transport_send_wrapper(const uint8_t *data, size_t len)
 {
     int ret = ble_transport_send_response(data, len);
     if (ret == BLE_TRANSPORT_OK) {
-        return (int)len;
+        return (int) len;
     }
     return ret;
 }
@@ -817,9 +817,9 @@ int ble_transport_receive_wrapper(uint8_t *data, size_t max_len, uint8_t *cmd)
 {
     /* BLE transport uses a callback model, not polling */
     /* Return 0 to indicate no data available (non-blocking) */
-    (void)data;
-    (void)max_len;
-    (void)cmd;
+    (void) data;
+    (void) max_len;
+    (void) cmd;
     return 0;
 }
 
@@ -842,12 +842,10 @@ int ble_transport_register(void)
 
     LOG_INFO("Registering BLE transport with transport abstraction");
 
-    transport_ops_t ops = {
-        .send = ble_transport_send_wrapper,
-        .receive = ble_transport_receive_wrapper,
-        .is_connected = ble_transport_is_connected,
-        .get_name = ble_transport_get_name
-    };
+    transport_ops_t ops = {.send = ble_transport_send_wrapper,
+                           .receive = ble_transport_receive_wrapper,
+                           .is_connected = ble_transport_is_connected,
+                           .get_name = ble_transport_get_name};
 
     int ret = transport_register(TRANSPORT_TYPE_BLE, &ops);
     if (ret != TRANSPORT_OK) {

@@ -34,13 +34,11 @@ typedef struct {
     transport_type_t locked_transport;
 } transport_state_t;
 
-static transport_state_t state = {
-    .initialized = false,
-    .active_transport = TRANSPORT_TYPE_MAX,
-    .operation_in_progress = false,
-    .locked = false,
-    .locked_transport = TRANSPORT_TYPE_MAX
-};
+static transport_state_t state = {.initialized = false,
+                                  .active_transport = TRANSPORT_TYPE_MAX,
+                                  .operation_in_progress = false,
+                                  .locked = false,
+                                  .locked_transport = TRANSPORT_TYPE_MAX};
 
 /* ========== Transport Management ========== */
 
@@ -335,8 +333,7 @@ int transport_lock(transport_type_t type)
     }
 
     if (state.locked && state.locked_transport != type) {
-        LOG_WARN("Cannot lock %s: already locked to %s",
-                 transport_type_name(type),
+        LOG_WARN("Cannot lock %s: already locked to %s", transport_type_name(type),
                  transport_type_name(state.locked_transport));
         return TRANSPORT_ERROR_LOCKED;
     }
