@@ -48,8 +48,13 @@
     - Test error handling for missing/out-of-order fragments
     - _Requirements: 4.1, 4.2, 4.3, 4.5, 10.2_
 
-- [ ] 3. Implement BLE FIDO GATT service
-  - [ ] 3.1 Create FIDO service module in `src/ble/ble_fido_service.c` and `src/ble/ble_fido_service.h`
+- [x] 3. Implement BLE FIDO GATT service
+
+
+
+
+  - [x] 3.1 Create FIDO service module in `src/ble/ble_fido_service.c` and `src/ble/ble_fido_service.h`
+
     - Define FIDO service UUID (0xFFFD) and characteristic UUIDs
     - Implement service initialization and registration
     - Implement Control Point characteristic (write handler)
@@ -57,30 +62,40 @@
     - Implement Service Revision and Bitfield characteristics (read handlers)
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-  - [ ] 3.2 Implement characteristic access control
+
+  - [x] 3.2 Implement characteristic access control
+
     - Enforce pairing requirement for FIDO characteristics
     - Reject unpaired access attempts
     - _Requirements: 3.1, 3.3, 3.4_
 
-- [ ] 4. Implement BLE transport manager
-  - [ ] 4.1 Create transport manager in `src/ble/ble_transport.c` and `src/ble/ble_transport.h`
+- [x] 4. Implement BLE transport manager
+
+
+
+
+  - [x] 4.1 Create transport manager in `src/ble/ble_transport.c` and `src/ble/ble_transport.h`
+
     - Implement state machine (IDLE, ADVERTISING, CONNECTED, PROCESSING)
     - Implement initialization and startup functions
     - Implement connection state tracking
     - Integrate fragmentation layer with GATT service
     - _Requirements: 1.1, 1.3, 1.4_
 
-  - [ ] 4.2 Implement CTAP request processing pipeline
+  - [x] 4.2 Implement CTAP request processing pipeline
+
     - Receive fragments from Control Point characteristic
     - Reassemble complete CTAP messages
     - Forward to CTAP2 protocol layer
     - _Requirements: 1.4, 4.2_
 
-  - [ ] 4.3 Implement CTAP response transmission pipeline
+  - [x] 4.3 Implement CTAP response transmission pipeline
+
     - Receive CTAP responses from protocol layer
     - Fragment responses based on MTU
     - Send fragments via Status characteristic notifications
     - _Requirements: 1.4, 4.3, 4.4_
+
 
   - [ ] 4.4 Implement connection management
     - Track connection state and encryption status
