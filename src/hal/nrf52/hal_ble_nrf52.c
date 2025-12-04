@@ -9,12 +9,13 @@
  * @license MIT License
  */
 
-#include "../hal_ble.h"
 #include "../../utils/logger.h"
+#include "../hal_ble.h"
 
 #ifdef NRF52
 
 #include <string.h>
+
 #include "ble.h"
 #include "ble_advertising.h"
 #include "ble_conn_params.h"
@@ -57,12 +58,10 @@ static struct {
     bool advertising;
     nrf_ble_gatt_t gatt_module;
     ble_advertising_t adv_module;
-} ble_state = {
-    .conn_handle = BLE_CONN_HANDLE_INVALID,
-    .initialized = false,
-    .advertising = false,
-    .service_count = 0
-};
+} ble_state = {.conn_handle = BLE_CONN_HANDLE_INVALID,
+               .initialized = false,
+               .advertising = false,
+               .service_count = 0};
 
 /* Forward declarations */
 static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context);
@@ -73,25 +72,25 @@ static void pm_evt_handler(pm_evt_t const *p_evt);
 
 /* ========== Helper Functions ========== */
 
-static void send_event(hal_ble_event_type_t type) {
+static void send_event(hal_ble_event_type_t type)
+{
     if (ble_state.event_callback) {
-        hal_ble_event_t event = {
-            .type = type,
-            .conn_handle = ble_state.conn_handle,
-            .char_handle = 0,
-            .data = NULL,
-            .data_len = 0,
-            .mtu = 0,
-            .encrypted = false,
-            .error_code = 0
-        };
+        hal_ble_event_t event = {.type = type,
+                                 .conn_handle = ble_state.conn_handle,
+                                 .char_handle = 0,
+                                 .data = NULL,
+                                 .data_len = 0,
+                                 .mtu = 0,
+                                 .encrypted = false,
+                                 .error_code = 0};
         ble_state.event_callback(&event);
     }
 }
 
 /* ========== Initialization and Control ========== */
 
-int hal_ble_init(hal_ble_event_callback_t callback) {
+int hal_ble_init(hal_ble_event_callback_t callback)
+{
     if (ble_state.initialized) {
         return HAL_BLE_OK;
     }
@@ -144,18 +143,16 @@ int hal_ble_init(hal_ble_event_callback_t callback) {
     }
 
     /* Configure security */
-    ble_gap_sec_params_t sec_params = {
-        .bond = 1,
-        .mitm = 1,
-        .lesc = 1,
-        .keypress = 0,
-        .io_caps = BLE_GAP_IO_CAPS_DISPLAY_YESNO,
-        .oob = 0,
-        .min_key_size = 7,
-        .max_key_size = 16,
-        .kdist_own = {.enc = 1, .id = 1},
-        .kdist_peer = {.enc = 1, .id = 1}
-    };
+    ble_gap_sec_params_t sec_params = {.bond = 1,
+                                       .mitm = 1,
+                                       .lesc = 1,
+                                       .keypress = 0,
+                                       .io_caps = BLE_GAP_IO_CAPS_DISPLAY_YESNO,
+                                       .oob = 0,
+                                       .min_key_size = 7,
+                                       .max_key_size = 16,
+                                       .kdist_own = {.enc = 1, .id = 1},
+                                       .kdist_peer = {.enc = 1, .id = 1}};
 
     err_code = pm_sec_params_set(&sec_params);
     if (err_code != NRF_SUCCESS) {
@@ -173,7 +170,8 @@ int hal_ble_init(hal_ble_event_callback_t callback) {
     /* Set device name */
     ble_gap_conn_sec_mode_t sec_mode;
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
-    err_code = sd_ble_gap_device_name_set(&sec_mode, (const uint8_t *)DEVICE_NAME, strlen(DEVICE_NAME));
+    err_code =
+        sd_ble_gap_device_name_set(&sec_mode, (const uint8_t *) DEVICE_NAME, strlen(DEVICE_NAME));
     if (err_code != NRF_SUCCESS) {
         LOG_ERROR("Device name set failed: %d", err_code);
         return HAL_BLE_ERROR;
@@ -185,13 +183,14 @@ int hal_ble_init(hal_ble_event_callback_t callback) {
     return HAL_BLE_OK;
 }
 
-int hal_ble_deinit(void) {
+int hal_ble_deinit(void)
+{
     if (!ble_state.initialized) {
         return HAL_BLE_OK;
     }
 
     hal_ble_stop_advertising();
-    
+
     if (ble_state.conn_handle != BLE_CONN_HANDLE_INVALID) {
         sd_ble_gap_disconnect(ble_state.conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     }
@@ -202,13 +201,15 @@ int hal_ble_deinit(void) {
     return HAL_BLE_OK;
 }
 
-bool hal_ble_is_supported(void) {
+bool hal_ble_is_supported(void)
+{
     return true;
 }
 
 /* ========== Advertising ========== */
 
-int hal_ble_start_advertising(const hal_ble_adv_params_t *params) {
+int hal_ble_start_advertising(const hal_ble_adv_params_t *params)
+{
     if (!ble_state.initialized) {
         return HAL_BLE_ERROR_INVALID_STATE;
     }
@@ -233,19 +234,21 @@ int hal_ble_start_advertising(const hal_ble_adv_params_t *params) {
     adv_params.properties.type = BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED;
     adv_params.p_peer_addr = NULL;
     adv_params.filter_policy = BLE_GAP_ADV_FP_ANY;
-    adv_params.interval = (params && params->interval_min_ms) ? 
-                          MSEC_TO_UNITS(params->interval_min_ms, UNIT_0_625_MS) : APP_ADV_INTERVAL;
-    adv_params.duration = (params && params->timeout_s) ? params->timeout_s * 100 : APP_ADV_DURATION;
+    adv_params.interval = (params && params->interval_min_ms)
+                              ? MSEC_TO_UNITS(params->interval_min_ms, UNIT_0_625_MS)
+                              : APP_ADV_INTERVAL;
+    adv_params.duration =
+        (params && params->timeout_s) ? params->timeout_s * 100 : APP_ADV_DURATION;
     adv_params.primary_phy = BLE_GAP_PHY_1MBPS;
 
     /* Encode advertising data */
     uint8_t adv_data_buf[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
     ble_gap_adv_data_t gap_adv_data = {
         .adv_data = {.p_data = adv_data_buf, .len = BLE_GAP_ADV_SET_DATA_SIZE_MAX},
-        .scan_rsp_data = {.p_data = NULL, .len = 0}
-    };
+        .scan_rsp_data = {.p_data = NULL, .len = 0}};
 
-    err_code = ble_advdata_encode(&advdata, gap_adv_data.adv_data.p_data, &gap_adv_data.adv_data.len);
+    err_code =
+        ble_advdata_encode(&advdata, gap_adv_data.adv_data.p_data, &gap_adv_data.adv_data.len);
     if (err_code != NRF_SUCCESS) {
         LOG_ERROR("Advertising data encode failed: %d", err_code);
         return HAL_BLE_ERROR;
@@ -271,7 +274,8 @@ int hal_ble_start_advertising(const hal_ble_adv_params_t *params) {
     return HAL_BLE_OK;
 }
 
-int hal_ble_stop_advertising(void) {
+int hal_ble_stop_advertising(void)
+{
     if (!ble_state.advertising) {
         return HAL_BLE_OK;
     }
@@ -288,13 +292,15 @@ int hal_ble_stop_advertising(void) {
     return HAL_BLE_OK;
 }
 
-bool hal_ble_is_advertising(void) {
+bool hal_ble_is_advertising(void)
+{
     return ble_state.advertising;
 }
 
 /* ========== GATT Operations ========== */
 
-int hal_ble_gatt_register_service(uint16_t service_uuid, uint16_t *service_handle) {
+int hal_ble_gatt_register_service(uint16_t service_uuid, uint16_t *service_handle)
+{
     if (!ble_state.initialized || service_handle == NULL) {
         return HAL_BLE_ERROR_INVALID_PARAM;
     }
@@ -303,14 +309,11 @@ int hal_ble_gatt_register_service(uint16_t service_uuid, uint16_t *service_handl
         return HAL_BLE_ERROR_NO_MEM;
     }
 
-    ble_uuid_t ble_uuid = {
-        .uuid = service_uuid,
-        .type = BLE_UUID_TYPE_BLE
-    };
+    ble_uuid_t ble_uuid = {.uuid = service_uuid, .type = BLE_UUID_TYPE_BLE};
 
-    ret_code_t err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY, 
-                                                     &ble_uuid, 
-                                                     &ble_state.services[ble_state.service_count].service_handle);
+    ret_code_t err_code =
+        sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY, &ble_uuid,
+                                 &ble_state.services[ble_state.service_count].service_handle);
     if (err_code != NRF_SUCCESS) {
         LOG_ERROR("Service add failed: %d", err_code);
         return HAL_BLE_ERROR;
@@ -325,9 +328,9 @@ int hal_ble_gatt_register_service(uint16_t service_uuid, uint16_t *service_handl
     return HAL_BLE_OK;
 }
 
-int hal_ble_gatt_add_characteristic(uint16_t service_handle, uint32_t char_uuid,
-                                     uint8_t properties, uint16_t max_len,
-                                     uint16_t *char_handle) {
+int hal_ble_gatt_add_characteristic(uint16_t service_handle, uint32_t char_uuid, uint8_t properties,
+                                    uint16_t max_len, uint16_t *char_handle)
+{
     if (!ble_state.initialized || char_handle == NULL) {
         return HAL_BLE_ERROR_INVALID_PARAM;
     }
@@ -372,11 +375,11 @@ int hal_ble_gatt_add_characteristic(uint16_t service_handle, uint32_t char_uuid,
 
     /* Set UUID */
     ble_uuid.type = BLE_UUID_TYPE_VENDOR_BEGIN;
-    ble_uuid.uuid = (uint16_t)(char_uuid & 0xFFFF);
+    ble_uuid.uuid = (uint16_t) (char_uuid & 0xFFFF);
 
     /* Add vendor-specific UUID if needed */
     ble_uuid128_t base_uuid = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
-                                0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB};
+                               0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB};
     memcpy(&base_uuid[12], &char_uuid, 4);
     sd_ble_uuid_vs_add(&base_uuid, &ble_uuid.type);
 
@@ -397,8 +400,8 @@ int hal_ble_gatt_add_characteristic(uint16_t service_handle, uint32_t char_uuid,
 
     /* Add characteristic */
     ble_gatts_char_handles_t handles;
-    ret_code_t err_code = sd_ble_gatts_characteristic_add(service_handle, &char_md, 
-                                                            &attr_char_value, &handles);
+    ret_code_t err_code =
+        sd_ble_gatts_characteristic_add(service_handle, &char_md, &attr_char_value, &handles);
     if (err_code != NRF_SUCCESS) {
         LOG_ERROR("Characteristic add failed: %d", err_code);
         return HAL_BLE_ERROR;
@@ -412,8 +415,9 @@ int hal_ble_gatt_add_characteristic(uint16_t service_handle, uint32_t char_uuid,
     return HAL_BLE_OK;
 }
 
-int hal_ble_notify(hal_ble_conn_handle_t conn_handle, uint16_t char_handle,
-                   const uint8_t *data, size_t len) {
+int hal_ble_notify(hal_ble_conn_handle_t conn_handle, uint16_t char_handle, const uint8_t *data,
+                   size_t len)
+{
     if (!ble_state.initialized || data == NULL) {
         return HAL_BLE_ERROR_INVALID_PARAM;
     }
@@ -440,7 +444,8 @@ int hal_ble_notify(hal_ble_conn_handle_t conn_handle, uint16_t char_handle,
     return HAL_BLE_OK;
 }
 
-int hal_ble_gatt_set_value(uint16_t char_handle, const uint8_t *data, size_t len) {
+int hal_ble_gatt_set_value(uint16_t char_handle, const uint8_t *data, size_t len)
+{
     if (!ble_state.initialized || data == NULL) {
         return HAL_BLE_ERROR_INVALID_PARAM;
     }
@@ -448,7 +453,7 @@ int hal_ble_gatt_set_value(uint16_t char_handle, const uint8_t *data, size_t len
     ble_gatts_value_t gatts_value = {0};
     gatts_value.len = len;
     gatts_value.offset = 0;
-    gatts_value.p_value = (uint8_t *)data;
+    gatts_value.p_value = (uint8_t *) data;
 
     ret_code_t err_code = sd_ble_gatts_value_set(ble_state.conn_handle, char_handle, &gatts_value);
     if (err_code != NRF_SUCCESS) {
@@ -461,12 +466,14 @@ int hal_ble_gatt_set_value(uint16_t char_handle, const uint8_t *data, size_t len
 
 /* ========== Connection Management ========== */
 
-int hal_ble_disconnect(hal_ble_conn_handle_t conn_handle) {
+int hal_ble_disconnect(hal_ble_conn_handle_t conn_handle)
+{
     if (!ble_state.initialized) {
         return HAL_BLE_ERROR_INVALID_STATE;
     }
 
-    ret_code_t err_code = sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+    ret_code_t err_code =
+        sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     if (err_code != NRF_SUCCESS) {
         LOG_ERROR("Disconnect failed: %d", err_code);
         return HAL_BLE_ERROR;
@@ -475,7 +482,8 @@ int hal_ble_disconnect(hal_ble_conn_handle_t conn_handle) {
     return HAL_BLE_OK;
 }
 
-int hal_ble_get_mtu(hal_ble_conn_handle_t conn_handle, uint16_t *mtu) {
+int hal_ble_get_mtu(hal_ble_conn_handle_t conn_handle, uint16_t *mtu)
+{
     if (!ble_state.initialized || mtu == NULL) {
         return HAL_BLE_ERROR_INVALID_PARAM;
     }
@@ -484,7 +492,8 @@ int hal_ble_get_mtu(hal_ble_conn_handle_t conn_handle, uint16_t *mtu) {
     return HAL_BLE_OK;
 }
 
-int hal_ble_is_encrypted(hal_ble_conn_handle_t conn_handle, bool *encrypted) {
+int hal_ble_is_encrypted(hal_ble_conn_handle_t conn_handle, bool *encrypted)
+{
     if (!ble_state.initialized || encrypted == NULL) {
         return HAL_BLE_ERROR_INVALID_PARAM;
     }
@@ -499,9 +508,10 @@ int hal_ble_is_encrypted(hal_ble_conn_handle_t conn_handle, bool *encrypted) {
     return HAL_BLE_OK;
 }
 
-int hal_ble_update_connection_params(hal_ble_conn_handle_t conn_handle,
-                                      uint16_t interval_min_ms, uint16_t interval_max_ms,
-                                      uint16_t latency, uint16_t timeout_ms) {
+int hal_ble_update_connection_params(hal_ble_conn_handle_t conn_handle, uint16_t interval_min_ms,
+                                     uint16_t interval_max_ms, uint16_t latency,
+                                     uint16_t timeout_ms)
+{
     if (!ble_state.initialized) {
         return HAL_BLE_ERROR_INVALID_STATE;
     }
@@ -523,18 +533,20 @@ int hal_ble_update_connection_params(hal_ble_conn_handle_t conn_handle,
 
 /* ========== Security Operations ========== */
 
-int hal_ble_set_security_config(const hal_ble_security_config_t *config) {
+int hal_ble_set_security_config(const hal_ble_security_config_t *config)
+{
     if (!ble_state.initialized || config == NULL) {
         return HAL_BLE_ERROR_INVALID_PARAM;
     }
 
     /* Security configuration is set during initialization */
     /* This function could be extended to update security settings dynamically */
-    
+
     return HAL_BLE_OK;
 }
 
-int hal_ble_start_pairing(hal_ble_conn_handle_t conn_handle) {
+int hal_ble_start_pairing(hal_ble_conn_handle_t conn_handle)
+{
     if (!ble_state.initialized) {
         return HAL_BLE_ERROR_INVALID_STATE;
     }
@@ -548,14 +560,14 @@ int hal_ble_start_pairing(hal_ble_conn_handle_t conn_handle) {
     return HAL_BLE_OK;
 }
 
-int hal_ble_pairing_confirm(hal_ble_conn_handle_t conn_handle, bool confirm) {
+int hal_ble_pairing_confirm(hal_ble_conn_handle_t conn_handle, bool confirm)
+{
     if (!ble_state.initialized) {
         return HAL_BLE_ERROR_INVALID_STATE;
     }
 
-    ret_code_t err_code = sd_ble_gap_auth_key_reply(conn_handle, 
-                                                      confirm ? BLE_GAP_AUTH_KEY_TYPE_PASSKEY : BLE_GAP_AUTH_KEY_TYPE_NONE,
-                                                      NULL);
+    ret_code_t err_code = sd_ble_gap_auth_key_reply(
+        conn_handle, confirm ? BLE_GAP_AUTH_KEY_TYPE_PASSKEY : BLE_GAP_AUTH_KEY_TYPE_NONE, NULL);
     if (err_code != NRF_SUCCESS) {
         LOG_ERROR("Pairing confirm failed: %d", err_code);
         return HAL_BLE_ERROR;
@@ -564,7 +576,8 @@ int hal_ble_pairing_confirm(hal_ble_conn_handle_t conn_handle, bool confirm) {
     return HAL_BLE_OK;
 }
 
-int hal_ble_delete_bond(hal_ble_conn_handle_t conn_handle) {
+int hal_ble_delete_bond(hal_ble_conn_handle_t conn_handle)
+{
     if (!ble_state.initialized) {
         return HAL_BLE_ERROR_INVALID_STATE;
     }
@@ -586,7 +599,8 @@ int hal_ble_delete_bond(hal_ble_conn_handle_t conn_handle) {
 
 /* ========== Device Information ========== */
 
-int hal_ble_set_device_name(const char *name) {
+int hal_ble_set_device_name(const char *name)
+{
     if (!ble_state.initialized || name == NULL) {
         return HAL_BLE_ERROR_INVALID_PARAM;
     }
@@ -594,7 +608,8 @@ int hal_ble_set_device_name(const char *name) {
     ble_gap_conn_sec_mode_t sec_mode;
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
 
-    ret_code_t err_code = sd_ble_gap_device_name_set(&sec_mode, (const uint8_t *)name, strlen(name));
+    ret_code_t err_code =
+        sd_ble_gap_device_name_set(&sec_mode, (const uint8_t *) name, strlen(name));
     if (err_code != NRF_SUCCESS) {
         LOG_ERROR("Device name set failed: %d", err_code);
         return HAL_BLE_ERROR;
@@ -603,7 +618,8 @@ int hal_ble_set_device_name(const char *name) {
     return HAL_BLE_OK;
 }
 
-int hal_ble_get_address(uint8_t addr[6]) {
+int hal_ble_get_address(uint8_t addr[6])
+{
     if (!ble_state.initialized || addr == NULL) {
         return HAL_BLE_ERROR_INVALID_PARAM;
     }
@@ -621,7 +637,8 @@ int hal_ble_get_address(uint8_t addr[6]) {
 
 /* ========== Event Handlers ========== */
 
-static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context) {
+static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context)
+{
     ret_code_t err_code;
 
     switch (p_ble_evt->header.evt_id) {
@@ -643,16 +660,14 @@ static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context) {
         case BLE_GATTS_EVT_WRITE: {
             const ble_gatts_evt_write_t *p_write = &p_ble_evt->evt.gatts_evt.params.write;
             if (ble_state.event_callback) {
-                hal_ble_event_t event = {
-                    .type = HAL_BLE_EVENT_WRITE,
-                    .conn_handle = p_ble_evt->evt.gatts_evt.conn_handle,
-                    .char_handle = p_write->handle,
-                    .data = p_write->data,
-                    .data_len = p_write->len,
-                    .mtu = 0,
-                    .encrypted = false,
-                    .error_code = 0
-                };
+                hal_ble_event_t event = {.type = HAL_BLE_EVENT_WRITE,
+                                         .conn_handle = p_ble_evt->evt.gatts_evt.conn_handle,
+                                         .char_handle = p_write->handle,
+                                         .data = p_write->data,
+                                         .data_len = p_write->len,
+                                         .mtu = 0,
+                                         .encrypted = false,
+                                         .error_code = 0};
                 ble_state.event_callback(&event);
             }
             break;
@@ -671,18 +686,18 @@ static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context) {
             break;
 
         case BLE_GAP_EVT_CONN_SEC_UPDATE: {
-            const ble_gap_evt_conn_sec_update_t *p_sec = &p_ble_evt->evt.gap_evt.params.conn_sec_update;
+            const ble_gap_evt_conn_sec_update_t *p_sec =
+                &p_ble_evt->evt.gap_evt.params.conn_sec_update;
             if (ble_state.event_callback) {
-                hal_ble_event_t event = {
-                    .type = HAL_BLE_EVENT_ENCRYPTION_CHANGED,
-                    .conn_handle = p_ble_evt->evt.gap_evt.conn_handle,
-                    .char_handle = 0,
-                    .data = NULL,
-                    .data_len = 0,
-                    .mtu = 0,
-                    .encrypted = (p_sec->conn_sec.sec_mode.sm > 0 && p_sec->conn_sec.sec_mode.lv > 0),
-                    .error_code = 0
-                };
+                hal_ble_event_t event = {.type = HAL_BLE_EVENT_ENCRYPTION_CHANGED,
+                                         .conn_handle = p_ble_evt->evt.gap_evt.conn_handle,
+                                         .char_handle = 0,
+                                         .data = NULL,
+                                         .data_len = 0,
+                                         .mtu = 0,
+                                         .encrypted = (p_sec->conn_sec.sec_mode.sm > 0 &&
+                                                       p_sec->conn_sec.sec_mode.lv > 0),
+                                         .error_code = 0};
                 ble_state.event_callback(&event);
             }
             break;
@@ -693,26 +708,26 @@ static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context) {
     }
 }
 
-static void gatt_evt_handler(nrf_ble_gatt_t *p_gatt, nrf_ble_gatt_evt_t const *p_evt) {
+static void gatt_evt_handler(nrf_ble_gatt_t *p_gatt, nrf_ble_gatt_evt_t const *p_evt)
+{
     if (p_evt->evt_id == NRF_BLE_GATT_EVT_ATT_MTU_UPDATED) {
         LOG_INFO("MTU updated to %d", p_evt->params.att_mtu_effective);
         if (ble_state.event_callback) {
-            hal_ble_event_t event = {
-                .type = HAL_BLE_EVENT_MTU_CHANGED,
-                .conn_handle = p_evt->conn_handle,
-                .char_handle = 0,
-                .data = NULL,
-                .data_len = 0,
-                .mtu = p_evt->params.att_mtu_effective,
-                .encrypted = false,
-                .error_code = 0
-            };
+            hal_ble_event_t event = {.type = HAL_BLE_EVENT_MTU_CHANGED,
+                                     .conn_handle = p_evt->conn_handle,
+                                     .char_handle = 0,
+                                     .data = NULL,
+                                     .data_len = 0,
+                                     .mtu = p_evt->params.att_mtu_effective,
+                                     .encrypted = false,
+                                     .error_code = 0};
             ble_state.event_callback(&event);
         }
     }
 }
 
-static void advertising_evt_handler(ble_adv_evt_t ble_adv_evt) {
+static void advertising_evt_handler(ble_adv_evt_t ble_adv_evt)
+{
     switch (ble_adv_evt) {
         case BLE_ADV_EVT_FAST:
             LOG_INFO("Fast advertising started");
@@ -728,13 +743,15 @@ static void advertising_evt_handler(ble_adv_evt_t ble_adv_evt) {
     }
 }
 
-static void conn_params_evt_handler(ble_conn_params_evt_t *p_evt) {
+static void conn_params_evt_handler(ble_conn_params_evt_t *p_evt)
+{
     if (p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED) {
         LOG_ERROR("Connection parameters negotiation failed");
     }
 }
 
-static void pm_evt_handler(pm_evt_t const *p_evt) {
+static void pm_evt_handler(pm_evt_t const *p_evt)
+{
     pm_handler_on_pm_evt(p_evt);
     pm_handler_disconnect_on_sec_failure(p_evt);
     pm_handler_flash_clean(p_evt);
@@ -752,16 +769,14 @@ static void pm_evt_handler(pm_evt_t const *p_evt) {
         case PM_EVT_CONN_SEC_FAILED:
             LOG_ERROR("Pairing failed");
             if (ble_state.event_callback) {
-                hal_ble_event_t event = {
-                    .type = HAL_BLE_EVENT_PAIRING_FAILED,
-                    .conn_handle = p_evt->conn_handle,
-                    .char_handle = 0,
-                    .data = NULL,
-                    .data_len = 0,
-                    .mtu = 0,
-                    .encrypted = false,
-                    .error_code = p_evt->params.conn_sec_failed.error
-                };
+                hal_ble_event_t event = {.type = HAL_BLE_EVENT_PAIRING_FAILED,
+                                         .conn_handle = p_evt->conn_handle,
+                                         .char_handle = 0,
+                                         .data = NULL,
+                                         .data_len = 0,
+                                         .mtu = 0,
+                                         .encrypted = false,
+                                         .error_code = p_evt->params.conn_sec_failed.error};
                 ble_state.event_callback(&event);
             }
             break;
