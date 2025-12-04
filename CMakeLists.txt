@@ -34,7 +34,6 @@ set(FIDO2_SOURCES
 
 set(CRYPTO_SOURCES
     src/crypto/crypto.c
-    src/crypto/attestation.c
 )
 
 set(STORAGE_SOURCES
