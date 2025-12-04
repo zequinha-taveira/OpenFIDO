@@ -7,12 +7,14 @@
  */
 
 #include "ble_transport.h"
-#include "ble_fido_service.h"
-#include "ble_fragment.h"
-#include "../hal/hal_ble.h"
-#include "../utils/logger.h"
+
 #include <stdlib.h>
 #include <string.h>
+
+#include "../hal/hal_ble.h"
+#include "../utils/logger.h"
+#include "ble_fido_service.h"
+#include "ble_fragment.h"
 
 /* ========== Transport State ========== */
 
@@ -26,13 +28,11 @@ typedef struct {
     uint64_t last_activity_ms;
 } ble_transport_state_t;
 
-static ble_transport_state_t transport_state = {
-    .initialized = false,
-    .state = BLE_TRANSPORT_STATE_IDLE,
-    .conn_handle = HAL_BLE_CONN_HANDLE_INVALID,
-    .mtu = BLE_FRAGMENT_DEFAULT_MTU,
-    .last_activity_ms = 0
-};
+static ble_transport_state_t transport_state = {.initialized = false,
+                                                .state = BLE_TRANSPORT_STATE_IDLE,
+                                                .conn_handle = HAL_BLE_CONN_HANDLE_INVALID,
+                                                .mtu = BLE_FRAGMENT_DEFAULT_MTU,
+                                                .last_activity_ms = 0};
 
 /* ========== Forward Declarations ========== */
 
@@ -42,7 +42,8 @@ static void on_status_notify(uint16_t conn_handle, bool enabled);
 
 /* ========== Transport Management ========== */
 
-int ble_transport_init(const ble_transport_callbacks_t *callbacks) {
+int ble_transport_init(const ble_transport_callbacks_t *callbacks)
+{
     if (callbacks == NULL) {
         return BLE_TRANSPORT_ERROR_INVALID_PARAM;
     }
@@ -71,10 +72,8 @@ int ble_transport_init(const ble_transport_callbacks_t *callbacks) {
     }
 
     /* Initialize FIDO service */
-    ble_fido_service_callbacks_t fido_callbacks = {
-        .on_control_point_write = on_control_point_write,
-        .on_status_notify = on_status_notify
-    };
+    ble_fido_service_callbacks_t fido_callbacks = {.on_control_point_write = on_control_point_write,
+                                                   .on_status_notify = on_status_notify};
 
     ret = ble_fido_service_init(&fido_callbacks);
     if (ret != BLE_FIDO_SERVICE_OK) {
@@ -93,7 +92,8 @@ int ble_transport_init(const ble_transport_callbacks_t *callbacks) {
     return BLE_TRANSPORT_OK;
 }
 
-int ble_transport_start(void) {
+int ble_transport_start(void)
+{
     if (!transport_state.initialized) {
         LOG_ERROR("BLE transport not initialized");
         return BLE_TRANSPORT_ERROR_NOT_INITIALIZED;
@@ -120,7 +120,8 @@ int ble_transport_start(void) {
     return BLE_TRANSPORT_OK;
 }
 
-int ble_transport_stop(void) {
+int ble_transport_stop(void)
+{
     if (!transport_state.initialized) {
         return BLE_TRANSPORT_ERROR_NOT_INITIALIZED;
     }
@@ -143,18 +144,21 @@ int ble_transport_stop(void) {
     return BLE_TRANSPORT_OK;
 }
 
-ble_transport_state_t ble_transport_get_state(void) {
+ble_transport_state_t ble_transport_get_state(void)
+{
     return transport_state.state;
 }
 
-bool ble_transport_is_connected(void) {
+bool ble_transport_is_connected(void)
+{
     return transport_state.conn_handle != HAL_BLE_CONN_HANDLE_INVALID &&
            transport_state.state >= BLE_TRANSPORT_STATE_CONNECTED;
 }
 
 /* ========== CTAP Message Processing ========== */
 
-int ble_transport_process_request(const uint8_t *data, size_t len) {
+int ble_transport_process_request(const uint8_t *data, size_t len)
+{
     if (!transport_state.initialized) {
         return BLE_TRANSPORT_ERROR_NOT_INITIALIZED;
     }
@@ -210,7 +214,8 @@ int ble_transport_process_request(const uint8_t *data, size_t len) {
     return BLE_TRANSPORT_OK;
 }
 
-int ble_transport_send_response(const uint8_t *data, size_t len) {
+int ble_transport_send_response(const uint8_t *data, size_t len)
+{
     if (!transport_state.initialized) {
         return BLE_TRANSPORT_ERROR_NOT_INITIALIZED;
     }
@@ -231,8 +236,8 @@ int ble_transport_send_response(const uint8_t *data, size_t len) {
     size_t fragment_sizes[BLE_FRAGMENT_MAX_FRAGMENTS];
     size_t num_fragments = 0;
 
-    int ret = ble_fragment_create(data, len, fragments, fragment_sizes, 
-                                   &num_fragments, transport_state.mtu);
+    int ret = ble_fragment_create(data, len, fragments, fragment_sizes, &num_fragments,
+                                  transport_state.mtu);
     if (ret != BLE_FRAGMENT_OK) {
         LOG_ERROR("Failed to create fragments: %d", ret);
         return BLE_TRANSPORT_ERROR;
@@ -242,17 +247,16 @@ int ble_transport_send_response(const uint8_t *data, size_t len) {
 
     /* Send each fragment */
     for (size_t i = 0; i < num_fragments; i++) {
-        ret = ble_fido_service_send_status(transport_state.conn_handle, 
-                                            fragments[i], 
-                                            fragment_sizes[i]);
+        ret = ble_fido_service_send_status(transport_state.conn_handle, fragments[i],
+                                           fragment_sizes[i]);
         if (ret != BLE_FIDO_SERVICE_OK) {
             LOG_ERROR("Failed to send fragment %zu: %d", i, ret);
-            
+
             /* Clean up remaining fragments */
             for (size_t j = i; j < num_fragments; j++) {
                 free(fragments[j]);
             }
-            
+
             return BLE_TRANSPORT_ERROR;
         }
 
@@ -267,15 +271,18 @@ int ble_transport_send_response(const uint8_t *data, size_t len) {
 
 /* ========== Connection Management ========== */
 
-uint16_t ble_transport_get_connection_handle(void) {
+uint16_t ble_transport_get_connection_handle(void)
+{
     return transport_state.conn_handle;
 }
 
-uint16_t ble_transport_get_mtu(void) {
+uint16_t ble_transport_get_mtu(void)
+{
     return transport_state.mtu;
 }
 
-int ble_transport_disconnect(void) {
+int ble_transport_disconnect(void)
+{
     if (!transport_state.initialized) {
         return BLE_TRANSPORT_ERROR_NOT_INITIALIZED;
     }
@@ -295,7 +302,8 @@ int ble_transport_disconnect(void) {
 
 /* ========== Event Handlers ========== */
 
-static void on_ble_event(const hal_ble_event_t *event) {
+static void on_ble_event(const hal_ble_event_t *event)
+{
     if (event == NULL) {
         return;
     }
@@ -305,14 +313,14 @@ static void on_ble_event(const hal_ble_event_t *event) {
             LOG_INFO("BLE connected: conn_handle=%d", event->conn_handle);
             transport_state.conn_handle = event->conn_handle;
             transport_state.state = BLE_TRANSPORT_STATE_CONNECTED;
-            
+
             /* Get MTU */
             hal_ble_get_mtu(event->conn_handle, &transport_state.mtu);
             LOG_INFO("Connection MTU: %d", transport_state.mtu);
-            
+
             /* Reset fragment buffer */
             ble_fragment_reset(&transport_state.rx_fragment);
-            
+
             /* Notify callback */
             if (transport_state.callbacks.on_connection_change != NULL) {
                 transport_state.callbacks.on_connection_change(true);
@@ -323,15 +331,15 @@ static void on_ble_event(const hal_ble_event_t *event) {
             LOG_INFO("BLE disconnected: conn_handle=%d", event->conn_handle);
             transport_state.conn_handle = HAL_BLE_CONN_HANDLE_INVALID;
             transport_state.state = BLE_TRANSPORT_STATE_ADVERTISING;
-            
+
             /* Reset fragment buffer */
             ble_fragment_reset(&transport_state.rx_fragment);
-            
+
             /* Notify callback */
             if (transport_state.callbacks.on_connection_change != NULL) {
                 transport_state.callbacks.on_connection_change(false);
             }
-            
+
             /* Restart advertising */
             hal_ble_start_advertising(NULL);
             break;
@@ -339,9 +347,8 @@ static void on_ble_event(const hal_ble_event_t *event) {
         case HAL_BLE_EVENT_WRITE:
             /* Handle Control Point writes */
             if (event->char_handle == ble_fido_service_get_control_point_handle()) {
-                ble_fido_service_on_control_point_write(event->conn_handle, 
-                                                         event->data, 
-                                                         event->data_len);
+                ble_fido_service_on_control_point_write(event->conn_handle, event->data,
+                                                        event->data_len);
             }
             break;
 
@@ -381,13 +388,15 @@ static void on_ble_event(const hal_ble_event_t *event) {
     }
 }
 
-static void on_control_point_write(uint16_t conn_handle, const uint8_t *data, size_t len) {
+static void on_control_point_write(uint16_t conn_handle, const uint8_t *data, size_t len)
+{
     LOG_DEBUG("Control Point write: conn=%d, len=%zu", conn_handle, len);
-    
+
     /* Process the fragment */
     ble_transport_process_request(data, len);
 }
 
-static void on_status_notify(uint16_t conn_handle, bool enabled) {
+static void on_status_notify(uint16_t conn_handle, bool enabled)
+{
     LOG_INFO("Status notify %s: conn=%d", enabled ? "enabled" : "disabled", conn_handle);
 }
