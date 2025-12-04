@@ -25,7 +25,7 @@ extern "C" {
 
 /**
  * @brief Fragment type: Initial fragment
- * 
+ *
  * Initial fragment contains the total message length in the first two bytes
  * after the command byte.
  */
@@ -33,7 +33,7 @@ extern "C" {
 
 /**
  * @brief Fragment type: Continuation fragment
- * 
+ *
  * Continuation fragments contain only data, no length information.
  */
 #define BLE_FRAGMENT_TYPE_CONT 0x00
@@ -59,34 +59,34 @@ extern "C" {
 
 /**
  * @brief Fragment reassembly buffer
- * 
+ *
  * Maintains state for reassembling fragmented messages received over BLE.
  */
 typedef struct {
-    uint8_t *buffer;              /**< Message buffer */
-    size_t total_len;             /**< Total expected message length */
-    size_t received_len;          /**< Bytes received so far */
-    uint8_t seq;                  /**< Expected sequence number */
-    bool in_progress;             /**< Reassembly in progress */
+    uint8_t *buffer;     /**< Message buffer */
+    size_t total_len;    /**< Total expected message length */
+    size_t received_len; /**< Bytes received so far */
+    uint8_t seq;         /**< Expected sequence number */
+    bool in_progress;    /**< Reassembly in progress */
 } ble_fragment_buffer_t;
 
 /* ========== Fragment Buffer Management ========== */
 
 /**
  * @brief Initialize fragment buffer
- * 
+ *
  * Prepares a fragment buffer for message reassembly.
- * 
+ *
  * @param frag Pointer to fragment buffer structure
  */
 void ble_fragment_init(ble_fragment_buffer_t *frag);
 
 /**
  * @brief Add fragment to buffer
- * 
+ *
  * Adds a received fragment to the reassembly buffer. Handles both
  * initial and continuation fragments.
- * 
+ *
  * @param frag Pointer to fragment buffer structure
  * @param data Fragment data
  * @param len Fragment data length
@@ -96,10 +96,10 @@ int ble_fragment_add(ble_fragment_buffer_t *frag, const uint8_t *data, size_t le
 
 /**
  * @brief Check if message is complete
- * 
+ *
  * Returns true when all fragments have been received and the message
  * is ready for processing.
- * 
+ *
  * @param frag Pointer to fragment buffer structure
  * @return true if message is complete, false otherwise
  */
@@ -107,9 +107,9 @@ bool ble_fragment_is_complete(const ble_fragment_buffer_t *frag);
 
 /**
  * @brief Get complete message
- * 
+ *
  * Retrieves the reassembled message after all fragments have been received.
- * 
+ *
  * @param frag Pointer to fragment buffer structure
  * @param data Output pointer to message data
  * @param len Output pointer to message length
@@ -119,9 +119,9 @@ int ble_fragment_get_message(const ble_fragment_buffer_t *frag, uint8_t **data, 
 
 /**
  * @brief Reset fragment buffer
- * 
+ *
  * Clears the fragment buffer and prepares it for a new message.
- * 
+ *
  * @param frag Pointer to fragment buffer structure
  */
 void ble_fragment_reset(ble_fragment_buffer_t *frag);
@@ -130,11 +130,11 @@ void ble_fragment_reset(ble_fragment_buffer_t *frag);
 
 /**
  * @brief Fragment outgoing message
- * 
+ *
  * Splits a CTAP message into fragments suitable for BLE transmission.
  * The first fragment is an INIT fragment containing the total length,
  * followed by CONT fragments.
- * 
+ *
  * @param data Message data to fragment
  * @param len Message length
  * @param fragments Output array of fragment pointers
@@ -143,7 +143,7 @@ void ble_fragment_reset(ble_fragment_buffer_t *frag);
  * @param mtu Maximum transmission unit size
  * @return 0 on success, negative error code otherwise
  */
-int ble_fragment_create(const uint8_t *data, size_t len, uint8_t *fragments[], 
+int ble_fragment_create(const uint8_t *data, size_t len, uint8_t *fragments[],
                         size_t fragment_sizes[], size_t *num_fragments, size_t mtu);
 
 /* ========== Error Codes ========== */
