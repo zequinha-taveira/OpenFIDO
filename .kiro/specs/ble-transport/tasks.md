@@ -284,5 +284,10 @@
     - Add BLE usage instructions to README
     - _Requirements: 6.4_
 
-- [ ] 13. Final checkpoint - Ensure all tests pass
+- [x] 13. Final checkpoint - Ensure all tests pass
+
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.
