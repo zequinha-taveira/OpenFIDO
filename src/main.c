@@ -247,7 +247,7 @@ static void main_loop(void)
     /* Initialize and start BLE transport if supported */
     if (hal_ble_is_supported()) {
         LOG_INFO("Initializing BLE transport...");
-        
+
         ble_transport_callbacks_t ble_callbacks = {
             .on_ctap_request = on_ble_ctap_request,
             .on_connection_change = on_ble_connection_change};
@@ -255,12 +255,12 @@ static void main_loop(void)
         int ret = ble_transport_init(&ble_callbacks);
         if (ret == BLE_TRANSPORT_OK) {
             LOG_INFO("BLE transport initialized successfully");
-            
+
             /* Register BLE with transport abstraction */
             ret = ble_transport_register();
             if (ret == BLE_TRANSPORT_OK) {
                 LOG_INFO("BLE transport registered with transport abstraction");
-                
+
                 /* Start BLE advertising */
                 ret = ble_transport_start();
                 if (ret == BLE_TRANSPORT_OK) {
@@ -290,7 +290,8 @@ static void main_loop(void)
 
             /* Check if another operation is in progress */
             if (transport_is_busy()) {
-                LOG_WARN("Operation already in progress on another transport, rejecting USB request");
+                LOG_WARN(
+                    "Operation already in progress on another transport, rejecting USB request");
                 /* Send CTAPHID_ERROR response */
                 /* For now, just continue to next iteration */
                 continue;
