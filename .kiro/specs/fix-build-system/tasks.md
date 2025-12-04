@@ -32,7 +32,10 @@
   - Confirm attestation-related tests work correctly
   - _Requirements: 1.2, 2.2_
 
-- [-] 3. Verify Docker build succeeds
+- [ ] 3. Verify Docker build succeeds
+
+
+
 
 
   - Build Docker image: `docker build -t openfido .`
