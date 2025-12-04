@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "../hal/hal_ble.h"
+#include "../transport/transport.h"
 #include "../utils/logger.h"
 #include "ble_fido_service.h"
 #include "ble_fragment.h"
@@ -285,6 +286,19 @@ int ble_transport_process_request(const uint8_t *data, size_t len)
 
         LOG_INFO("CTAP request complete: %zu bytes", msg_len);
 
+        /* Check if another transport has an operation in progress */
+        if (transport_is_busy() && !transport_is_active(TRANSPORT_TYPE_BLE)) {
+            LOG_WARN("Operation in progress on another transport, rejecting BLE request");
+            ble_fragment_reset(&transport_state.rx_fragment);
+            /* TODO: Send CTAP error response */
+            return BLE_TRANSPORT_ERROR_BUSY;
+        }
+
+        /* Set BLE as active transport and lock it for this operation */
+        transport_set_active(TRANSPORT_TYPE_BLE);
+        transport_lock(TRANSPORT_TYPE_BLE);
+        transport_set_busy(true);
+
         /* Switch to active connection parameters for processing */
         set_connection_params_active();
 
@@ -301,6 +315,10 @@ int ble_transport_process_request(const uint8_t *data, size_t len)
 
         /* Return to connected state */
         transport_state.state = BLE_TRANSPORT_STATE_CONNECTED;
+
+        /* Clear operation state */
+        transport_set_busy(false);
+        transport_unlock();
 
         /* Update activity timestamp after processing */
         update_activity_timestamp();
@@ -777,4 +795,71 @@ static void on_control_point_write(uint16_t conn_handle, const uint8_t *data, si
 static void on_status_notify(uint16_t conn_handle, bool enabled)
 {
     LOG_INFO("Status notify %s: conn=%d", enabled ? "enabled" : "disabled", conn_handle);
+}
+
+/* ========== Transport Abstraction Integration ========== */
+
+/**
+ * @brief BLE transport send wrapper for transport abstraction
+ *
+ * Wraps ble_transport_send_response() to match transport_ops_t signature.
+ *
+ * @param data Data to send
+ * @param len Length of data
+ * @return Number of bytes sent, or negative error code
+ */
+static int ble_transport_send_wrapper(const uint8_t *data, size_t len)
+{
+    int ret = ble_transport_send_response(data, len);
+    if (ret == BLE_TRANSPORT_OK) {
+        return (int)len;
+    }
+    return ret;
+}
+
+int ble_transport_receive_wrapper(uint8_t *data, size_t max_len, uint8_t *cmd)
+{
+    /* BLE transport uses a callback model, not polling */
+    /* Return 0 to indicate no data available (non-blocking) */
+    (void)data;
+    (void)max_len;
+    (void)cmd;
+    return 0;
+}
+
+/**
+ * @brief Get BLE transport name
+ *
+ * @return Transport name string
+ */
+static const char *ble_transport_get_name(void)
+{
+    return "BLE-GATT";
+}
+
+int ble_transport_register(void)
+{
+    if (!transport_state.initialized) {
+        LOG_ERROR("BLE transport not initialized, cannot register");
+        return BLE_TRANSPORT_ERROR_NOT_INITIALIZED;
+    }
+
+    LOG_INFO("Registering BLE transport with transport abstraction");
+
+    transport_ops_t ops = {
+        .send = ble_transport_send_wrapper,
+        .receive = ble_transport_receive_wrapper,
+        .is_connected = ble_transport_is_connected,
+        .get_name = ble_transport_get_name
+    };
+
+    int ret = transport_register(TRANSPORT_TYPE_BLE, &ops);
+    if (ret != TRANSPORT_OK) {
+        LOG_ERROR("Failed to register BLE transport: %d", ret);
+        return BLE_TRANSPORT_ERROR;
+    }
+
+    LOG_INFO("BLE transport registered with transport abstraction");
+
+    return BLE_TRANSPORT_OK;
 }

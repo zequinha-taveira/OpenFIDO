@@ -17,10 +17,15 @@
 #include "openpgp.h"
 #include "piv.h"
 #include "storage.h"
+#include "transport/transport.h"
 #include "u2f.h"
 #include "usb_ccid.h"
 #include "usb_hid.h"
 #include "ykman.h"
+
+/* Include BLE transport if supported */
+#include "hal/hal_ble.h"
+#include "ble/ble_transport.h"
 
 #define APP_VERSION "1.0.0"
 
@@ -46,6 +51,14 @@ static int init_subsystems(void)
         return -1;
     }
 
+    /* Initialize transport abstraction layer */
+    LOG_INFO("Initializing transport abstraction layer...");
+    ret = transport_init();
+    if (ret != TRANSPORT_OK) {
+        LOG_ERROR("Transport abstraction initialization failed: %d", ret);
+        return -1;
+    }
+
     /* Initialize cryptographic library */
     LOG_INFO("Initializing cryptographic library...");
     ret = crypto_init();
@@ -68,6 +81,24 @@ static int init_subsystems(void)
     if (ret != 0) {
         LOG_ERROR("USB HID initialization failed: %d", ret);
         return -1;
+    }
+
+    /* Register USB HID with transport abstraction */
+    ret = usb_hid_register_transport();
+    if (ret != 0) {
+        LOG_ERROR("USB HID transport registration failed: %d", ret);
+        return -1;
+    }
+
+    /* Initialize BLE transport if supported */
+    if (hal_ble_is_supported()) {
+        LOG_INFO("Initializing BLE transport...");
+        
+        /* BLE callbacks will be set up later in main loop initialization */
+        /* For now, we just check if it's supported */
+        LOG_INFO("BLE is supported on this platform");
+    } else {
+        LOG_INFO("BLE not supported on this platform, continuing with USB only");
     }
 
     /* Initialize CCID (Smart Card) */
@@ -115,6 +146,66 @@ static int init_subsystems(void)
 }
 
 /**
+ * @brief BLE CTAP request callback
+ *
+ * Called when a complete CTAP request is received over BLE.
+ * Processes the request and sends the response back over BLE.
+ */
+static void on_ble_ctap_request(const uint8_t *data, size_t len)
+{
+    static uint8_t tx_buffer[CTAP2_MAX_MESSAGE_SIZE];
+    ctap2_request_t request;
+    ctap2_response_t response;
+
+    LOG_DEBUG("BLE CTAP request received: %zu bytes", len);
+
+    if (len < 1) {
+        LOG_ERROR("Invalid CTAP request: too short");
+        return;
+    }
+
+    /* Parse CTAP2 request */
+    request.cmd = data[0];
+    request.data = (len > 1) ? &data[1] : NULL;
+    request.data_len = (len > 1) ? (len - 1) : 0;
+
+    /* Prepare response buffer */
+    response.data = tx_buffer + 1; /* Reserve first byte for status */
+    response.data_len = 0;
+
+    /* Process CTAP2 request */
+    response.status = ctap2_process_request(&request, &response);
+
+    /* Send response */
+    tx_buffer[0] = response.status;
+    int total_len = 1 + response.data_len;
+
+    /* Response is sent via transport abstraction (already set to BLE) */
+    int ret = transport_send(tx_buffer, total_len);
+    if (ret < 0) {
+        LOG_ERROR("Failed to send BLE response: %d", ret);
+    } else {
+        LOG_DEBUG("Sent %d bytes BLE response (status: 0x%02X)", total_len, response.status);
+    }
+}
+
+/**
+ * @brief BLE connection state change callback
+ *
+ * Called when BLE connection state changes.
+ */
+static void on_ble_connection_change(bool connected)
+{
+    if (connected) {
+        LOG_INFO("BLE client connected");
+        hal_led_set_state(HAL_LED_ON);
+    } else {
+        LOG_INFO("BLE client disconnected");
+        hal_led_set_state(HAL_LED_BLINK_SLOW);
+    }
+}
+
+/**
  * @brief Main application loop
  */
 static void main_loop(void)
@@ -128,16 +219,55 @@ static void main_loop(void)
     LOG_INFO("Entering main loop...");
     hal_led_set_state(HAL_LED_BLINK_SLOW);
 
+    /* Initialize and start BLE transport if supported */
+    if (hal_ble_is_supported()) {
+        ble_transport_callbacks_t ble_callbacks = {
+            .on_ctap_request = on_ble_ctap_request,
+            .on_connection_change = on_ble_connection_change
+        };
+
+        int ret = ble_transport_init(&ble_callbacks);
+        if (ret == BLE_TRANSPORT_OK) {
+            /* Register BLE with transport abstraction */
+            ret = ble_transport_register();
+            if (ret == BLE_TRANSPORT_OK) {
+                /* Start BLE advertising */
+                ret = ble_transport_start();
+                if (ret == BLE_TRANSPORT_OK) {
+                    LOG_INFO("BLE transport started successfully");
+                } else {
+                    LOG_ERROR("Failed to start BLE transport: %d", ret);
+                }
+            } else {
+                LOG_ERROR("Failed to register BLE transport: %d", ret);
+            }
+        } else {
+            LOG_ERROR("Failed to initialize BLE transport: %d", ret);
+        }
+    }
+
     while (1) {
         /* Feed watchdog */
         hal_watchdog_feed();
 
-        /* Wait for USB data */
+        /* Poll USB transport for data */
         uint8_t cmd = 0;
-        bytes_received = usb_hid_receive(rx_buffer, sizeof(rx_buffer), &cmd);
+        bytes_received = transport_receive_from(TRANSPORT_TYPE_USB, rx_buffer, sizeof(rx_buffer), &cmd);
 
         if (bytes_received > 0) {
             LOG_DEBUG("Received %d bytes from USB (CMD: 0x%02X)", bytes_received, cmd);
+
+            /* Check if another operation is in progress */
+            if (transport_is_busy()) {
+                LOG_WARN("Operation already in progress, rejecting request");
+                /* In a real implementation, we would send a CTAPHID_ERROR response */
+                continue;
+            }
+
+            /* Set USB as active transport and lock it for this operation */
+            transport_set_active(TRANSPORT_TYPE_USB);
+            transport_lock(TRANSPORT_TYPE_USB);
+            transport_set_busy(true);
 
             /* Indicate activity */
             hal_led_set_state(HAL_LED_ON);
@@ -155,11 +285,11 @@ static void main_loop(void)
                 /* Process CTAP2 request */
                 response.status = ctap2_process_request(&request, &response);
 
-                /* Send response */
+                /* Send response on active transport */
                 tx_buffer[0] = response.status;
                 int total_len = 1 + response.data_len;
 
-                usb_hid_send(tx_buffer, total_len);
+                transport_send(tx_buffer, total_len);
                 LOG_DEBUG("Sent %d bytes response (status: 0x%02X)", total_len, response.status);
             } else if (cmd == CTAPHID_MSG) {
                 /* Process U2F APDU */
@@ -170,7 +300,7 @@ static void main_loop(void)
                 tx_buffer[response_len++] = (sw >> 8) & 0xFF;
                 tx_buffer[response_len++] = sw & 0xFF;
 
-                usb_hid_send(tx_buffer, response_len);
+                transport_send(tx_buffer, response_len);
                 LOG_DEBUG("Sent %zu bytes U2F response (SW: 0x%04X)", response_len, sw);
             } else {
                 LOG_WARN("Unknown or unsupported CTAPHID command: 0x%02X", cmd);
@@ -180,6 +310,10 @@ static void main_loop(void)
                  * internals */
                 /* For now, just ignore */
             }
+
+            /* Clear operation state */
+            transport_set_busy(false);
+            transport_unlock();
 
             /* Return to idle state */
             /* Note: In a real implementation with non-blocking LED, we would use a timer here

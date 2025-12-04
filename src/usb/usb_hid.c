@@ -10,6 +10,7 @@
 
 #include <string.h>
 
+#include "../transport/transport.h"
 #include "hal.h"
 #include "logger.h"
 
@@ -195,4 +196,40 @@ int usb_hid_receive(uint8_t *data, size_t max_len, uint8_t *cmd)
     }
 
     return received;
+}
+
+bool usb_hid_is_connected(void)
+{
+    /* USB is considered connected if it's initialized */
+    /* In a real implementation, this would check USB connection state */
+    return (current_cid != 0);
+}
+
+/* ========== Transport Abstraction Integration ========== */
+
+static const char *usb_transport_get_name(void)
+{
+    return "USB-HID";
+}
+
+int usb_hid_register_transport(void)
+{
+    LOG_INFO("Registering USB HID with transport abstraction");
+
+    transport_ops_t ops = {
+        .send = usb_hid_send,
+        .receive = usb_hid_receive,
+        .is_connected = usb_hid_is_connected,
+        .get_name = usb_transport_get_name
+    };
+
+    int ret = transport_register(TRANSPORT_TYPE_USB, &ops);
+    if (ret != TRANSPORT_OK) {
+        LOG_ERROR("Failed to register USB transport: %d", ret);
+        return USB_HID_ERROR;
+    }
+
+    LOG_INFO("USB HID registered with transport abstraction");
+
+    return USB_HID_OK;
 }

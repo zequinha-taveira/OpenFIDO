@@ -135,8 +135,14 @@
     - Test encryption requirement enforcement
     - _Requirements: 3.4, 3.5, 10.3_
 
-- [ ] 6. Implement transport abstraction layer
-  - [ ] 6.1 Create transport abstraction in `src/transport/transport.c` and `src/transport/transport.h`
+- [x] 6. Implement transport abstraction layer
+
+
+
+
+  - [x] 6.1 Create transport abstraction in `src/transport/transport.c` and `src/transport/transport.h`
+
+
     - Define transport type enum (USB, BLE)
     - Define transport operations structure
     - Implement transport registration
@@ -144,12 +150,16 @@
     - Track active transport
     - _Requirements: 5.1, 5.2, 5.4_
 
-  - [ ] 6.2 Refactor USB HID to use transport abstraction
+  - [x] 6.2 Refactor USB HID to use transport abstraction
+
+
     - Register USB transport with operations
     - Update main loop to use transport abstraction
     - _Requirements: 5.1, 5.3_
 
-  - [ ] 6.3 Register BLE transport with abstraction layer
+  - [x] 6.3 Register BLE transport with abstraction layer
+
+
     - Implement BLE transport operations
     - Handle transport switching and queuing
     - _Requirements: 5.1, 5.2_

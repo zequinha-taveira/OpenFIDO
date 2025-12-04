@@ -61,6 +61,20 @@ int usb_hid_send(const uint8_t *data, size_t len);
  */
 int usb_hid_receive(uint8_t *data, size_t max_len, uint8_t *cmd);
 
+/**
+ * @brief Check if USB HID is connected
+ *
+ * @return true if connected, false otherwise
+ */
+bool usb_hid_is_connected(void);
+
+/**
+ * @brief Register USB HID with transport abstraction
+ *
+ * @return USB_HID_OK on success, error code otherwise
+ */
+int usb_hid_register_transport(void);
+
 #ifdef __cplusplus
 }
 #endif

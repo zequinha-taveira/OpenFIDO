@@ -181,6 +181,32 @@ uint64_t ble_transport_get_last_activity_ms(void);
  */
 int ble_transport_disconnect(void);
 
+/* ========== Transport Abstraction Integration ========== */
+
+/**
+ * @brief Register BLE transport with transport abstraction layer
+ *
+ * Registers BLE transport operations with the transport abstraction,
+ * allowing unified access to BLE alongside other transports.
+ *
+ * @return 0 on success, negative error code otherwise
+ */
+int ble_transport_register(void);
+
+/**
+ * @brief BLE transport receive wrapper for transport abstraction
+ *
+ * This is a wrapper function that adapts BLE transport to the
+ * transport abstraction receive interface. BLE uses a callback
+ * model, so this function returns 0 (non-blocking).
+ *
+ * @param data Buffer to receive data (unused for BLE)
+ * @param max_len Maximum length (unused for BLE)
+ * @param cmd Command byte pointer (unused for BLE)
+ * @return 0 (BLE uses callbacks, not polling)
+ */
+int ble_transport_receive_wrapper(uint8_t *data, size_t max_len, uint8_t *cmd);
+
 /* ========== Error Codes ========== */
 
 #define BLE_TRANSPORT_OK 0
