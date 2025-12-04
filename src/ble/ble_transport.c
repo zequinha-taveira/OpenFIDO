@@ -29,6 +29,8 @@ typedef struct {
     uint16_t mtu;
     uint64_t last_activity_ms;
     uint64_t connection_time_ms;
+    uint8_t pairing_attempts;
+    uint64_t pairing_block_until_ms;
 } ble_connection_state_t;
 
 /* ========== Transport State ========== */
@@ -51,7 +53,9 @@ static ble_transport_ctx_t transport_state = {
         .is_paired = false,
         .mtu = BLE_FRAGMENT_DEFAULT_MTU,
         .last_activity_ms = 0,
-        .connection_time_ms = 0
+        .connection_time_ms = 0,
+        .pairing_attempts = 0,
+        .pairing_block_until_ms = 0
     }
 };
 
@@ -72,6 +76,14 @@ static ble_transport_ctx_t transport_state = {
 /* Idle timeout before switching to low-power connection params (1 second) */
 #define BLE_IDLE_TIMEOUT_MS 1000
 
+/* ========== Security Parameters ========== */
+
+/* Maximum pairing attempts before blocking */
+#define BLE_MAX_PAIRING_ATTEMPTS 3
+
+/* Pairing block duration after max attempts (60 seconds) */
+#define BLE_PAIRING_BLOCK_DURATION_MS 60000
+
 /* ========== Forward Declarations ========== */
 
 static void on_ble_event(const hal_ble_event_t *event);
@@ -82,6 +94,11 @@ static void update_activity_timestamp(void);
 static int set_connection_params_active(void);
 static int set_connection_params_idle(void);
 static uint64_t get_time_ms(void);
+static bool is_pairing_blocked(void);
+static void handle_pairing_request(const hal_ble_event_t *event);
+static void handle_pairing_complete(const hal_ble_event_t *event);
+static void handle_pairing_failed(const hal_ble_event_t *event);
+static void reset_pairing_attempts(void);
 
 /* ========== Transport Management ========== */
 
@@ -113,6 +130,22 @@ int ble_transport_init(const ble_transport_callbacks_t *callbacks)
         LOG_ERROR("BLE HAL init failed: %d", ret);
         return BLE_TRANSPORT_ERROR;
     }
+
+    /* Configure security settings - enforce LE Secure Connections with numeric comparison */
+    hal_ble_security_config_t security_config = {
+        .mode = HAL_BLE_SECURITY_MODE_AUTHENTICATED,
+        .pairing = HAL_BLE_PAIRING_METHOD_NUMERIC,
+        .bonding_enabled = true,
+        .mitm_protection = true
+    };
+
+    ret = hal_ble_set_security_config(&security_config);
+    if (ret != HAL_BLE_OK) {
+        LOG_ERROR("Failed to set security config: %d", ret);
+        return BLE_TRANSPORT_ERROR;
+    }
+
+    LOG_INFO("BLE security configured: LE Secure Connections with numeric comparison");
 
     /* Initialize FIDO service */
     ble_fido_service_callbacks_t fido_callbacks = {.on_control_point_write = on_control_point_write,
@@ -216,6 +249,18 @@ int ble_transport_process_request(const uint8_t *data, size_t len)
         return BLE_TRANSPORT_ERROR_NOT_CONNECTED;
     }
 
+    /* Enforce encryption requirement for CTAP operations */
+    if (!transport_state.connection.is_encrypted) {
+        LOG_ERROR("Cannot process request: connection not encrypted");
+        return BLE_TRANSPORT_ERROR_NOT_ENCRYPTED;
+    }
+
+    /* Enforce pairing requirement for CTAP operations */
+    if (!transport_state.connection.is_paired) {
+        LOG_ERROR("Cannot process request: connection not paired");
+        return BLE_TRANSPORT_ERROR_NOT_PAIRED;
+    }
+
     /* Update activity timestamp */
     update_activity_timestamp();
 
@@ -280,6 +325,18 @@ int ble_transport_send_response(const uint8_t *data, size_t len)
     if (!ble_transport_is_connected()) {
         LOG_ERROR("Cannot send response: not connected");
         return BLE_TRANSPORT_ERROR_NOT_CONNECTED;
+    }
+
+    /* Enforce encryption requirement for CTAP operations */
+    if (!transport_state.connection.is_encrypted) {
+        LOG_ERROR("Cannot send response: connection not encrypted");
+        return BLE_TRANSPORT_ERROR_NOT_ENCRYPTED;
+    }
+
+    /* Enforce pairing requirement for CTAP operations */
+    if (!transport_state.connection.is_paired) {
+        LOG_ERROR("Cannot send response: connection not paired");
+        return BLE_TRANSPORT_ERROR_NOT_PAIRED;
     }
 
     /* Update activity timestamp */
@@ -476,6 +533,122 @@ static int set_connection_params_idle(void)
     return BLE_TRANSPORT_OK;
 }
 
+/* ========== Security and Pairing Functions ========== */
+
+/**
+ * @brief Check if pairing is currently blocked
+ * 
+ * @return true if pairing is blocked, false otherwise
+ */
+static bool is_pairing_blocked(void)
+{
+    uint64_t current_time = get_time_ms();
+    
+    if (transport_state.connection.pairing_block_until_ms > current_time) {
+        uint64_t remaining_ms = transport_state.connection.pairing_block_until_ms - current_time;
+        LOG_WARN("Pairing blocked for %llu more seconds", remaining_ms / 1000);
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * @brief Reset pairing attempts counter
+ */
+static void reset_pairing_attempts(void)
+{
+    transport_state.connection.pairing_attempts = 0;
+    transport_state.connection.pairing_block_until_ms = 0;
+}
+
+/**
+ * @brief Handle pairing request event
+ * 
+ * @param event BLE event
+ */
+static void handle_pairing_request(const hal_ble_event_t *event)
+{
+    LOG_INFO("Pairing request received");
+    
+    /* Check if pairing is blocked */
+    if (is_pairing_blocked()) {
+        LOG_ERROR("Pairing blocked due to too many failed attempts");
+        
+        /* Reject the pairing request */
+        hal_ble_pairing_confirm(event->conn_handle, false);
+        return;
+    }
+    
+    /* For numeric comparison, the HAL will generate a passkey and display it */
+    /* The user must confirm the passkey matches on both devices */
+    LOG_INFO("Pairing method: Numeric Comparison");
+    LOG_INFO("Pairing attempts: %d/%d", 
+             transport_state.connection.pairing_attempts + 1, 
+             BLE_MAX_PAIRING_ATTEMPTS);
+}
+
+/**
+ * @brief Handle pairing complete event
+ * 
+ * @param event BLE event
+ */
+static void handle_pairing_complete(const hal_ble_event_t *event)
+{
+    LOG_INFO("Pairing completed successfully");
+    
+    /* Reset pairing attempts on success */
+    reset_pairing_attempts();
+    
+    /* Update connection state */
+    transport_state.connection.is_paired = true;
+    
+    /* Verify encryption is enabled after pairing */
+    bool encrypted = false;
+    if (hal_ble_is_encrypted(event->conn_handle, &encrypted) == HAL_BLE_OK) {
+        transport_state.connection.is_encrypted = encrypted;
+        if (!encrypted) {
+            LOG_ERROR("Pairing complete but connection not encrypted!");
+            /* Disconnect if encryption is not enabled */
+            hal_ble_disconnect(event->conn_handle);
+        } else {
+            LOG_INFO("Connection is now encrypted and paired");
+        }
+    }
+}
+
+/**
+ * @brief Handle pairing failed event
+ * 
+ * @param event BLE event
+ */
+static void handle_pairing_failed(const hal_ble_event_t *event)
+{
+    LOG_ERROR("Pairing failed: error=%d", event->error_code);
+    
+    /* Increment pairing attempts */
+    transport_state.connection.pairing_attempts++;
+    
+    LOG_WARN("Pairing attempt %d/%d failed", 
+             transport_state.connection.pairing_attempts, 
+             BLE_MAX_PAIRING_ATTEMPTS);
+    
+    /* Check if we've reached the maximum attempts */
+    if (transport_state.connection.pairing_attempts >= BLE_MAX_PAIRING_ATTEMPTS) {
+        uint64_t current_time = get_time_ms();
+        transport_state.connection.pairing_block_until_ms = 
+            current_time + BLE_PAIRING_BLOCK_DURATION_MS;
+        
+        LOG_ERROR("Maximum pairing attempts reached. Blocking pairing for %d seconds",
+                  BLE_PAIRING_BLOCK_DURATION_MS / 1000);
+        
+        /* Disconnect the connection */
+        hal_ble_disconnect(event->conn_handle);
+    }
+    
+    transport_state.connection.is_paired = false;
+}
+
 /* ========== Event Handlers ========== */
 
 static void on_ble_event(const hal_ble_event_t *event)
@@ -495,6 +668,9 @@ static void on_ble_event(const hal_ble_event_t *event)
             transport_state.connection.is_paired = false;
             transport_state.connection.connection_time_ms = get_time_ms();
             update_activity_timestamp();
+            
+            /* Note: pairing_attempts and pairing_block_until_ms are NOT reset here */
+            /* They persist across connections to enforce the blocking period */
             
             /* Get MTU */
             hal_ble_get_mtu(event->conn_handle, &transport_state.connection.mtu);
@@ -525,6 +701,9 @@ static void on_ble_event(const hal_ble_event_t *event)
             transport_state.connection.is_paired = false;
             transport_state.connection.last_activity_ms = 0;
             transport_state.connection.connection_time_ms = 0;
+            
+            /* Note: pairing_attempts and pairing_block_until_ms are NOT reset here */
+            /* They persist across connections to enforce the blocking period */
             
             /* Update transport state */
             transport_state.state = BLE_TRANSPORT_STATE_ADVERTISING;
@@ -581,23 +760,16 @@ static void on_ble_event(const hal_ble_event_t *event)
             }
             break;
 
+        case HAL_BLE_EVENT_PAIRING_REQUEST:
+            handle_pairing_request(event);
+            break;
+
         case HAL_BLE_EVENT_PAIRING_COMPLETE:
-            LOG_INFO("Pairing complete");
-            transport_state.connection.is_paired = true;
-            
-            /* Verify encryption is enabled after pairing */
-            bool encrypted = false;
-            if (hal_ble_is_encrypted(event->conn_handle, &encrypted) == HAL_BLE_OK) {
-                transport_state.connection.is_encrypted = encrypted;
-                if (!encrypted) {
-                    LOG_ERROR("Pairing complete but connection not encrypted!");
-                }
-            }
+            handle_pairing_complete(event);
             break;
 
         case HAL_BLE_EVENT_PAIRING_FAILED:
-            LOG_ERROR("Pairing failed: error=%d", event->error_code);
-            transport_state.connection.is_paired = false;
+            handle_pairing_failed(event);
             break;
 
         default:

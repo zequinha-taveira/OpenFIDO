@@ -189,6 +189,8 @@ int ble_transport_disconnect(void);
 #define BLE_TRANSPORT_ERROR_NOT_INITIALIZED -3
 #define BLE_TRANSPORT_ERROR_NOT_CONNECTED -4
 #define BLE_TRANSPORT_ERROR_BUSY -5
+#define BLE_TRANSPORT_ERROR_NOT_ENCRYPTED -6
+#define BLE_TRANSPORT_ERROR_NOT_PAIRED -7
 
 #ifdef __cplusplus
 }
