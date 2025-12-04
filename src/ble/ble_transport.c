@@ -130,12 +130,10 @@ int ble_transport_init(const ble_transport_callbacks_t *callbacks)
     }
 
     /* Configure security settings - enforce LE Secure Connections with numeric comparison */
-    hal_ble_security_config_t security_config = {
-        .mode = HAL_BLE_SECURITY_MODE_AUTHENTICATED,
-        .pairing = HAL_BLE_PAIRING_METHOD_NUMERIC,
-        .bonding_enabled = true,
-        .mitm_protection = true
-    };
+    hal_ble_security_config_t security_config = {.mode = HAL_BLE_SECURITY_MODE_AUTHENTICATED,
+                                                 .pairing = HAL_BLE_PAIRING_METHOD_NUMERIC,
+                                                 .bonding_enabled = true,
+                                                 .mitm_protection = true};
 
     ret = hal_ble_set_security_config(&security_config);
     if (ret != HAL_BLE_OK) {
@@ -544,19 +542,19 @@ static int set_connection_params_idle(void)
 
 /**
  * @brief Check if pairing is currently blocked
- * 
+ *
  * @return true if pairing is blocked, false otherwise
  */
 static bool is_pairing_blocked(void)
 {
     uint64_t current_time = get_time_ms();
-    
+
     if (transport_state.connection.pairing_block_until_ms > current_time) {
         uint64_t remaining_ms = transport_state.connection.pairing_block_until_ms - current_time;
         LOG_WARN("Pairing blocked for %llu more seconds", remaining_ms / 1000);
         return true;
     }
-    
+
     return false;
 }
 
@@ -571,45 +569,44 @@ static void reset_pairing_attempts(void)
 
 /**
  * @brief Handle pairing request event
- * 
+ *
  * @param event BLE event
  */
 static void handle_pairing_request(const hal_ble_event_t *event)
 {
     LOG_INFO("Pairing request received");
-    
+
     /* Check if pairing is blocked */
     if (is_pairing_blocked()) {
         LOG_ERROR("Pairing blocked due to too many failed attempts");
-        
+
         /* Reject the pairing request */
         hal_ble_pairing_confirm(event->conn_handle, false);
         return;
     }
-    
+
     /* For numeric comparison, the HAL will generate a passkey and display it */
     /* The user must confirm the passkey matches on both devices */
     LOG_INFO("Pairing method: Numeric Comparison");
-    LOG_INFO("Pairing attempts: %d/%d", 
-             transport_state.connection.pairing_attempts + 1, 
+    LOG_INFO("Pairing attempts: %d/%d", transport_state.connection.pairing_attempts + 1,
              BLE_MAX_PAIRING_ATTEMPTS);
 }
 
 /**
  * @brief Handle pairing complete event
- * 
+ *
  * @param event BLE event
  */
 static void handle_pairing_complete(const hal_ble_event_t *event)
 {
     LOG_INFO("Pairing completed successfully");
-    
+
     /* Reset pairing attempts on success */
     reset_pairing_attempts();
-    
+
     /* Update connection state */
     transport_state.connection.is_paired = true;
-    
+
     /* Verify encryption is enabled after pairing */
     bool encrypted = false;
     if (hal_ble_is_encrypted(event->conn_handle, &encrypted) == HAL_BLE_OK) {
@@ -626,33 +623,32 @@ static void handle_pairing_complete(const hal_ble_event_t *event)
 
 /**
  * @brief Handle pairing failed event
- * 
+ *
  * @param event BLE event
  */
 static void handle_pairing_failed(const hal_ble_event_t *event)
 {
     LOG_ERROR("Pairing failed: error=%d", event->error_code);
-    
+
     /* Increment pairing attempts */
     transport_state.connection.pairing_attempts++;
-    
-    LOG_WARN("Pairing attempt %d/%d failed", 
-             transport_state.connection.pairing_attempts, 
+
+    LOG_WARN("Pairing attempt %d/%d failed", transport_state.connection.pairing_attempts,
              BLE_MAX_PAIRING_ATTEMPTS);
-    
+
     /* Check if we've reached the maximum attempts */
     if (transport_state.connection.pairing_attempts >= BLE_MAX_PAIRING_ATTEMPTS) {
         uint64_t current_time = get_time_ms();
-        transport_state.connection.pairing_block_until_ms = 
+        transport_state.connection.pairing_block_until_ms =
             current_time + BLE_PAIRING_BLOCK_DURATION_MS;
-        
+
         LOG_ERROR("Maximum pairing attempts reached. Blocking pairing for %d seconds",
                   BLE_PAIRING_BLOCK_DURATION_MS / 1000);
-        
+
         /* Disconnect the connection */
         hal_ble_disconnect(event->conn_handle);
     }
-    
+
     transport_state.connection.is_paired = false;
 }
 
