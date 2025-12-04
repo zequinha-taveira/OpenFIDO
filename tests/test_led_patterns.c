@@ -54,7 +54,7 @@ int test_ble_pattern_transitions(void)
     led_patterns_init();
 
     /* Simulate BLE state transitions */
-    
+
     /* Start advertising */
     led_set_pattern(LED_PATTERN_BLE_ADVERTISING);
     TEST_ASSERT(led_get_current_pattern() == LED_PATTERN_BLE_ADVERTISING);
