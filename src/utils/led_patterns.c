@@ -21,6 +21,9 @@ static const led_pattern_t default_patterns[] = {
     [LED_PATTERN_SUCCESS] = {500, 0, 1, 255},       /* Solid 500ms */
     [LED_PATTERN_ERROR] = {100, 100, 3, 255},       /* Blink 3 times */
     [LED_PATTERN_BOOTLOADER] = {200, 800, 0, 128},  /* Slow blink */
+    [LED_PATTERN_BLE_ADVERTISING] = {500, 1500, 0, 128}, /* Slow blink for advertising */
+    [LED_PATTERN_BLE_CONNECTED] = {0xFFFF, 0, 0, 255},   /* Solid on (very long on time) */
+    [LED_PATTERN_BLE_PROCESSING] = {50, 50, 0, 255},     /* Fast blink for processing */
     [LED_PATTERN_CUSTOM] = {0, 0, 0, 0}             /* User-defined */
 };
 

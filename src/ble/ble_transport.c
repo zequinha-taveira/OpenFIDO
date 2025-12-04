@@ -11,8 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../hal/hal.h"
 #include "../hal/hal_ble.h"
 #include "../transport/transport.h"
+#include "../utils/led_patterns.h"
 #include "../utils/logger.h"
 #include "ble_fido_service.h"
 #include "ble_fragment.h"
@@ -187,6 +189,9 @@ int ble_transport_start(void)
 
     transport_state.state = BLE_TRANSPORT_STATE_ADVERTISING;
 
+    /* Set LED pattern for advertising (slow blink) */
+    led_set_pattern(LED_PATTERN_BLE_ADVERTISING);
+
     LOG_INFO("BLE transport started (advertising)");
 
     return BLE_TRANSPORT_OK;
@@ -210,6 +215,9 @@ int ble_transport_stop(void)
     }
 
     transport_state.state = BLE_TRANSPORT_STATE_IDLE;
+
+    /* Turn off BLE LED indication when stopped */
+    led_set_pattern(LED_PATTERN_IDLE);
 
     LOG_INFO("BLE transport stopped");
 
@@ -303,6 +311,9 @@ int ble_transport_process_request(const uint8_t *data, size_t len)
         /* Update state */
         transport_state.state = BLE_TRANSPORT_STATE_PROCESSING;
 
+        /* Set LED pattern for processing (fast blink) */
+        led_set_pattern(LED_PATTERN_BLE_PROCESSING);
+
         /* Invoke callback */
         if (transport_state.callbacks.on_ctap_request != NULL) {
             transport_state.callbacks.on_ctap_request(msg_data, msg_len);
@@ -313,6 +324,9 @@ int ble_transport_process_request(const uint8_t *data, size_t len)
 
         /* Return to connected state */
         transport_state.state = BLE_TRANSPORT_STATE_CONNECTED;
+
+        /* Restore LED pattern to connected (solid on) */
+        led_set_pattern(LED_PATTERN_BLE_CONNECTED);
 
         /* Clear operation state */
         transport_set_busy(false);
@@ -453,11 +467,7 @@ int ble_transport_disconnect(void)
  */
 static uint64_t get_time_ms(void)
 {
-    /* TODO: Implement platform-specific time function */
-    /* For now, return a placeholder value */
-    /* This should be replaced with hal_get_time_ms() or similar */
-    static uint64_t time_counter = 0;
-    return time_counter++;
+    return hal_get_timestamp_ms();
 }
 
 /**
@@ -685,6 +695,9 @@ static void on_ble_event(const hal_ble_event_t *event)
             /* Update transport state */
             transport_state.state = BLE_TRANSPORT_STATE_CONNECTED;
 
+            /* Set LED pattern for connected state (solid on) */
+            led_set_pattern(LED_PATTERN_BLE_CONNECTED);
+
             /* Reset fragment buffer */
             ble_fragment_reset(&transport_state.rx_fragment);
 
@@ -710,6 +723,9 @@ static void on_ble_event(const hal_ble_event_t *event)
 
             /* Update transport state */
             transport_state.state = BLE_TRANSPORT_STATE_ADVERTISING;
+
+            /* Set LED pattern back to advertising (slow blink) */
+            led_set_pattern(LED_PATTERN_BLE_ADVERTISING);
 
             /* Reset fragment buffer */
             ble_fragment_reset(&transport_state.rx_fragment);

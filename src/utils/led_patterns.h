@@ -24,6 +24,9 @@ typedef enum {
     LED_PATTERN_SUCCESS,       /* Operation successful */
     LED_PATTERN_ERROR,         /* Operation failed */
     LED_PATTERN_BOOTLOADER,    /* Bootloader/rescue mode */
+    LED_PATTERN_BLE_ADVERTISING, /* BLE advertising (slow blink) */
+    LED_PATTERN_BLE_CONNECTED,   /* BLE connected (solid on) */
+    LED_PATTERN_BLE_PROCESSING,  /* BLE processing (fast blink) */
     LED_PATTERN_CUSTOM         /* User-defined pattern */
 } led_pattern_type_t;
 
