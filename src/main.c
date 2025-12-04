@@ -24,8 +24,8 @@
 #include "ykman.h"
 
 /* Include BLE transport if supported */
-#include "hal/hal_ble.h"
 #include "ble/ble_transport.h"
+#include "hal/hal_ble.h"
 
 #define APP_VERSION "1.0.0"
 
@@ -93,7 +93,7 @@ static int init_subsystems(void)
     /* Initialize BLE transport if supported */
     if (hal_ble_is_supported()) {
         LOG_INFO("Initializing BLE transport...");
-        
+
         /* BLE callbacks will be set up later in main loop initialization */
         /* For now, we just check if it's supported */
         LOG_INFO("BLE is supported on this platform");
@@ -223,8 +223,7 @@ static void main_loop(void)
     if (hal_ble_is_supported()) {
         ble_transport_callbacks_t ble_callbacks = {
             .on_ctap_request = on_ble_ctap_request,
-            .on_connection_change = on_ble_connection_change
-        };
+            .on_connection_change = on_ble_connection_change};
 
         int ret = ble_transport_init(&ble_callbacks);
         if (ret == BLE_TRANSPORT_OK) {
@@ -252,7 +251,8 @@ static void main_loop(void)
 
         /* Poll USB transport for data */
         uint8_t cmd = 0;
-        bytes_received = transport_receive_from(TRANSPORT_TYPE_USB, rx_buffer, sizeof(rx_buffer), &cmd);
+        bytes_received =
+            transport_receive_from(TRANSPORT_TYPE_USB, rx_buffer, sizeof(rx_buffer), &cmd);
 
         if (bytes_received > 0) {
             LOG_DEBUG("Received %d bytes from USB (CMD: 0x%02X)", bytes_received, cmd);
