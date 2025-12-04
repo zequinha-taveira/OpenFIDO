@@ -31,6 +31,11 @@
   - STM32 (industry-standard MCUs)
   - Nordic nRF52 (BLE support)
 
+- 📡 **Multiple Transport Options**
+  - USB HID (CTAPHID protocol)
+  - Bluetooth Low Energy (BLE GATT)
+  - Simultaneous USB and BLE operation
+
 - 🧪 **Production Ready**
   - Comprehensive test suite
   - FIDO2 conformance tested
@@ -82,20 +87,38 @@ make
 # Flash using your preferred method (ST-Link, OpenOCD, etc.)
 ```
 
-### Building for Nordic nRF52
+### Building for Nordic nRF52 (with BLE)
 
 ```bash
 # Create build directory
 mkdir build && cd build
 
-# Configure for nRF52
+# Configure for nRF52 (BLE enabled by default)
 cmake -DPLATFORM=NRF52 ..
 
 # Build
 make
 
 # Flash using nrfjprog or your preferred method
+nrfjprog --program openfido.hex --chiperase --verify --reset
 ```
+
+### Building with BLE Support
+
+BLE transport is automatically enabled for nRF52 platform. For other platforms:
+
+```bash
+# Enable BLE support explicitly
+cmake -DPLATFORM=<platform> -DENABLE_BLE=ON ..
+
+# Disable BLE support
+cmake -DPLATFORM=<platform> -DENABLE_BLE=OFF ..
+```
+
+**Note**: BLE support requires platform-specific BLE HAL implementation. Currently supported:
+- ✅ nRF52 (Nordic SoftDevice)
+- ⚠️ ESP32 (stub implementation, not functional)
+- ❌ STM32 (no BLE hardware)
 
 ## 📚 Documentation
 
@@ -125,6 +148,59 @@ OpenFIDO/
 └── platformio.ini      # PlatformIO configuration
 ```
 
+## 📱 Using BLE Transport
+
+### Pairing Your Device
+
+1. **Power on** your nRF52-based OpenFIDO device
+2. The LED will **slow blink** indicating BLE advertising
+3. On your phone/computer, open Bluetooth settings
+4. Look for device named "OpenFIDO" or "FIDO2"
+5. Initiate pairing - you'll see a **numeric code** on both devices
+6. Verify the codes match and confirm pairing
+7. LED will turn **solid on** when connected
+
+### Using with Mobile Devices
+
+**Android (Chrome/WebAuthn)**:
+1. Ensure Bluetooth is enabled
+2. Pair your OpenFIDO device
+3. Visit a WebAuthn-enabled site (e.g., https://webauthn.io)
+4. Select "Use a security key" → "Bluetooth"
+5. Choose your paired OpenFIDO device
+6. Press the button when LED blinks fast
+
+**iOS (Safari/WebAuthn)**:
+1. Ensure Bluetooth is enabled
+2. Pair your OpenFIDO device in Settings
+3. Visit a WebAuthn-enabled site
+4. Select "Security Key" option
+5. Press the button when prompted
+
+### LED Status Indicators
+
+- **Slow Blink**: BLE advertising (discoverable)
+- **Solid On**: BLE connected
+- **Fast Blink**: Processing CTAP operation (press button)
+- **Off**: BLE disabled or deep sleep
+
+### Troubleshooting BLE
+
+**Device not discoverable:**
+- Check if BLE is enabled in build (`ENABLE_BLE=ON`)
+- Verify platform supports BLE (nRF52)
+- Reset device and wait for slow blink
+
+**Pairing fails:**
+- Ensure numeric codes match on both devices
+- After 3 failed attempts, wait 60 seconds
+- Try removing device from Bluetooth settings and re-pair
+
+**Connection drops:**
+- Check battery level (if battery-powered)
+- Reduce distance between devices
+- Minimize interference from other BLE devices
+
 ## 🧪 Testing
 
 ### Run Unit Tests
@@ -142,12 +218,20 @@ make test
 # Or test with browsers at https://webauthn.io
 ```
 
-### Browser Testing
+### Browser Testing (USB)
 
 1. Build and flash the firmware to your device
 2. Connect via USB
 3. Visit https://webauthn.io or https://demo.yubico.com
 4. Test registration and authentication
+
+### Browser Testing (BLE)
+
+1. Build with BLE support and flash to nRF52 device
+2. Pair device via Bluetooth
+3. Visit https://webauthn.io on mobile device
+4. Select "Use a security key" → "Bluetooth"
+5. Test registration and authentication
 
 ## 🔒 Security
 
@@ -186,12 +270,13 @@ clang-format -i src/**/*.c src/**/*.h
 
 - [x] Core FIDO2/CTAP2 implementation
 - [x] ESP32 HAL support
+- [x] Nordic nRF52 HAL support
+- [x] BLE transport support
 - [ ] STM32 HAL support
-- [ ] Nordic nRF52 HAL support
 - [ ] CTAP2.1 extensions
-- [ ] BLE transport support
 - [ ] NFC transport support
 - [ ] Hardware security module integration
+- [ ] BLE support for ESP32
 
 ## 📄 License
 

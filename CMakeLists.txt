@@ -67,28 +67,59 @@ set(UTILS_SOURCES
     src/utils/buffer.c
 )
 
+set(TRANSPORT_SOURCES
+    src/transport/transport.c
+)
+
+# BLE transport sources (conditionally compiled based on BLE support)
+set(BLE_SOURCES
+    src/ble/ble_transport.c
+    src/ble/ble_fido_service.c
+    src/ble/ble_fragment.c
+)
+
 # Platform-specific configuration
+# BLE support option (can be overridden via -DENABLE_BLE=ON/OFF)
+option(ENABLE_BLE "Enable BLE transport support" OFF)
+
 if(PLATFORM STREQUAL "ESP32")
     # ESP32 uses ESP-IDF build system
     # This CMakeLists.txt is for reference; actual ESP32 build uses idf.py
     message(STATUS "ESP32 platform - use idf.py for building")
     
     set(HAL_SOURCES src/hal/esp32/hal_esp32.c)
+    # ESP32 can support BLE but uses stub by default
+    set(HAL_BLE_SOURCES src/hal/hal_ble_stub.c)
     
 elseif(PLATFORM STREQUAL "STM32")
     set(HAL_SOURCES src/hal/stm32/hal_stm32.c)
+    # STM32 does not have BLE support, use stub
+    set(HAL_BLE_SOURCES src/hal/hal_ble_stub.c)
     
     # STM32-specific flags
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16")
     
 elseif(PLATFORM STREQUAL "NRF52")
     set(HAL_SOURCES src/hal/nrf52/hal_nrf52.c)
+    # nRF52 has native BLE support
+    set(HAL_BLE_SOURCES src/hal/nrf52/hal_ble_nrf52.c)
+    set(ENABLE_BLE ON CACHE BOOL "Enable BLE transport support" FORCE)
     
     # nRF52-specific flags
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16")
     
 else()
     message(FATAL_ERROR "Unsupported platform: ${PLATFORM}")
+endif()
+
+# Configure BLE support
+if(ENABLE_BLE)
+    message(STATUS "BLE transport: ENABLED")
+    add_definitions(-DENABLE_BLE=1)
+    set(BLE_TRANSPORT_SOURCES ${BLE_SOURCES})
+else()
+    message(STATUS "BLE transport: DISABLED")
+    set(BLE_TRANSPORT_SOURCES "")
 endif()
 
 # Include directories
@@ -102,6 +133,8 @@ include_directories(
     src/storage
     src/hal
     src/usb
+    src/ble
+    src/transport
     src/piv
     src/openpgp
     src/oath
@@ -117,7 +150,10 @@ add_executable(openfido
     ${CRYPTO_SOURCES}
     ${STORAGE_SOURCES}
     ${HAL_SOURCES}
+    ${HAL_BLE_SOURCES}
     ${USB_SOURCES}
+    ${TRANSPORT_SOURCES}
+    ${BLE_TRANSPORT_SOURCES}
     ${PIV_SOURCES}
     ${OPENPGP_SOURCES}
     ${OATH_SOURCES}
@@ -144,4 +180,5 @@ message(STATUS "OpenFIDO Configuration Summary:")
 message(STATUS "  Platform: ${PLATFORM}")
 message(STATUS "  C Compiler: ${CMAKE_C_COMPILER}")
 message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  BLE Support: ${ENABLE_BLE}")
 message(STATUS "")
