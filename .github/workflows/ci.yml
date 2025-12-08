@@ -15,7 +15,7 @@ jobs:
     continue-on-error: true  # Allow auto-format workflow to fix issues
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install clang-format
         run: sudo apt-get update && sudo apt-get install -y clang-format
@@ -43,7 +43,7 @@ jobs:
         mbedtls_version: ['3.5.0']
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup compiler
         run: |
@@ -122,7 +122,7 @@ jobs:
           - nrf52840
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Cache PlatformIO
         uses: actions/cache@v4
